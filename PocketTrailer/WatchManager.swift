@@ -33,146 +33,149 @@ final class WatchManager : NSObject, WCSessionDelegate {
 
 		startBGTask()
 
-		switch(message["command"] as? String ?? "") {
-		case "refresh":
-			app.startRefresh()
-			dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0)) {
+		dispatch_async(dispatch_get_main_queue()) {
 
-				let lastSuccessfulSync = Settings.lastSuccessfulRefresh ?? NSDate()
+			switch(message["command"] as? String ?? "") {
+			case "refresh":
+				app.startRefresh()
+				dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0)) {
 
-				while app.isRefreshing {
-					NSThread.sleepForTimeInterval(0.1)
-				}
+					let lastSuccessfulSync = Settings.lastSuccessfulRefresh ?? NSDate()
 
-				atNextEvent {
-					if Settings.lastSuccessfulRefresh == nil || lastSuccessfulSync.isEqualToDate(Settings.lastSuccessfulRefresh!) {
-						self.reportFailure("Refresh Failed", message, replyHandler)
-					} else {
-						self.processList(message, replyHandler)
+					while app.isRefreshing {
+						NSThread.sleepForTimeInterval(0.1)
+					}
+
+					atNextEvent {
+						if Settings.lastSuccessfulRefresh == nil || lastSuccessfulSync.isEqualToDate(Settings.lastSuccessfulRefresh!) {
+							self.reportFailure("Refresh Failed", message, replyHandler)
+						} else {
+							self.processList(message, replyHandler)
+						}
 					}
 				}
-			}
 
-		case "openpr":
-			if let itemId = message["id"] as? String {
-				let m = popupManager.getMasterController()
-				m.openPrWithId(itemId)
-				DataManager.saveDB()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
-
-		case "openissue":
-			if let itemId = message["id"] as? String {
-				let m = popupManager.getMasterController()
-				m.openIssueWithId(itemId)
-				DataManager.saveDB()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
-
-		case "opencomment":
-			if let itemId = message["id"] as? String {
-				let m = popupManager.getMasterController()
-				m.openCommentWithId(itemId)
-				DataManager.saveDB()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
-
-		case "clearAllMerged":
-			for p in PullRequest.allMergedRequestsInMoc(mainObjectContext) {
-				mainObjectContext.deleteObject(p)
-			}
-			DataManager.saveDB()
-			let m = popupManager.getMasterController()
-			m.reloadDataWithAnimation(false)
-			m.updateStatus()
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
-
-		case "clearAllClosed":
-			for p in PullRequest.allClosedRequestsInMoc(mainObjectContext) {
-				mainObjectContext.deleteObject(p)
-			}
-			for i in Issue.allClosedIssuesInMoc(mainObjectContext) {
-				mainObjectContext.deleteObject(i)
-			}
-			DataManager.saveDB()
-			let m = popupManager.getMasterController()
-			m.reloadDataWithAnimation(false)
-			m.updateStatus()
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
-
-		case "markPrRead":
-			if let
-				itemId = message["id"] as? String,
-				oid = DataManager.idForUriPath(itemId),
-				pr = existingObjectWithID(oid) as? PullRequest {
-					pr.catchUpWithComments()
-					popupManager.getMasterController().reloadDataWithAnimation(false)
+			case "openpr":
+				if let itemId = message["localId"] as? String {
+					let m = popupManager.getMasterController()
+					m.openPrWithId(itemId)
 					DataManager.saveDB()
-					app.updateBadge()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
 
-		case "markIssueRead":
-			if let
-				itemId = message["id"] as? String,
-				oid = DataManager.idForUriPath(itemId),
-				i = existingObjectWithID(oid) as? Issue {
-					i.catchUpWithComments()
-					popupManager.getMasterController().reloadDataWithAnimation(false)
+			case "openissue":
+				if let itemId = message["localId"] as? String {
+					let m = popupManager.getMasterController()
+					m.openIssueWithId(itemId)
 					DataManager.saveDB()
-					app.updateBadge()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
 
-		case "markEverythingRead":
-			PullRequest.markEverythingRead(PullRequestSection.None, moc: mainObjectContext)
-			Issue.markEverythingRead(PullRequestSection.None, moc: mainObjectContext)
-			popupManager.getMasterController().reloadDataWithAnimation(false)
-			DataManager.saveDB()
-			app.updateBadge()
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
+			case "opencomment":
+				if let itemId = message["id"] as? String {
+					let m = popupManager.getMasterController()
+					m.openCommentWithId(itemId)
+					DataManager.saveDB()
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
 
-		case "markAllPrsRead":
-			if let s = message["sectionIndex"] as? Int {
-				PullRequest.markEverythingRead(PullRequestSection(rawValue: s)!, moc: mainObjectContext)
+			case "clearAllMerged":
+				for p in PullRequest.allMergedRequestsInMoc(mainObjectContext) {
+					mainObjectContext.deleteObject(p)
+				}
+				DataManager.saveDB()
+				let m = popupManager.getMasterController()
+				m.reloadDataWithAnimation(false)
+				m.updateStatus()
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
+
+			case "clearAllClosed":
+				for p in PullRequest.allClosedRequestsInMoc(mainObjectContext) {
+					mainObjectContext.deleteObject(p)
+				}
+				for i in Issue.allClosedIssuesInMoc(mainObjectContext) {
+					mainObjectContext.deleteObject(i)
+				}
+				DataManager.saveDB()
+				let m = popupManager.getMasterController()
+				m.reloadDataWithAnimation(false)
+				m.updateStatus()
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
+
+			case "markPrRead":
+				if let
+					itemId = message["localId"] as? String,
+					oid = DataManager.idForUriPath(itemId),
+					pr = existingObjectWithID(oid) as? PullRequest {
+						pr.catchUpWithComments()
+						popupManager.getMasterController().reloadDataWithAnimation(false)
+						DataManager.saveDB()
+						app.updateBadge()
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
+
+			case "markIssueRead":
+				if let
+					itemId = message["localId"] as? String,
+					oid = DataManager.idForUriPath(itemId),
+					i = existingObjectWithID(oid) as? Issue {
+						i.catchUpWithComments()
+						popupManager.getMasterController().reloadDataWithAnimation(false)
+						DataManager.saveDB()
+						app.updateBadge()
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
+
+			case "markEverythingRead":
+				PullRequest.markEverythingRead(PullRequestSection.None, moc: mainObjectContext)
+				Issue.markEverythingRead(PullRequestSection.None, moc: mainObjectContext)
 				popupManager.getMasterController().reloadDataWithAnimation(false)
 				DataManager.saveDB()
 				app.updateBadge()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
 
-		case "markAllIssuesRead":
-			if let s = message["sectionIndex"] as? Int {
-				Issue.markEverythingRead(PullRequestSection(rawValue: s)!, moc: mainObjectContext)
-				popupManager.getMasterController().reloadDataWithAnimation(false)
-				DataManager.saveDB()
-				app.updateBadge()
-			}
-			atNextEvent {
-				self.processList(message, replyHandler)
-			}
+			case "markAllPrsRead":
+				if let s = message["sectionIndex"] as? Int {
+					PullRequest.markEverythingRead(PullRequestSection(rawValue: s)!, moc: mainObjectContext)
+					popupManager.getMasterController().reloadDataWithAnimation(false)
+					DataManager.saveDB()
+					app.updateBadge()
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
 
-		default:
-			atNextEvent {
-				self.processList(message, replyHandler)
+			case "markAllIssuesRead":
+				if let s = message["sectionIndex"] as? Int {
+					Issue.markEverythingRead(PullRequestSection(rawValue: s)!, moc: mainObjectContext)
+					popupManager.getMasterController().reloadDataWithAnimation(false)
+					DataManager.saveDB()
+					app.updateBadge()
+				}
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
+
+			default:
+				atNextEvent {
+					self.processList(message, replyHandler)
+				}
 			}
 		}
 	}
@@ -189,8 +192,8 @@ final class WatchManager : NSObject, WCSessionDelegate {
 
 		case "item_list":
 			let type = message["type"] as! String
-			let section = message["section"] as! String
-			result["result"] = buildItemList(type, section)
+			let sectionIndex = message["sectionIndex"] as! Int
+			result["result"] = buildItemList(type, sectionIndex)
 			reportSuccess(result, replyHandler)
 
 		case "item_detail":
@@ -225,17 +228,10 @@ final class WatchManager : NSObject, WCSessionDelegate {
 
 	////////////////////////////
 
-	private func buildItemList(type: String, _ section: String) -> [[String : AnyObject]] {
+	private func buildItemList(type: String, _ sectionIndex: Int) -> [[String : AnyObject]] {
 		var items = [[String : AnyObject]]()
 
-		let sectionIndex: PullRequestSection
-		switch section {
-			case "mine": sectionIndex = PullRequestSection.Mine
-			case "participated": sectionIndex = PullRequestSection.Participated
-			case "merged": sectionIndex = PullRequestSection.Merged
-			case "closed": sectionIndex = PullRequestSection.Closed
-			default: sectionIndex = PullRequestSection.All
-		}
+		let sectionIndex = PullRequestSection(rawValue: sectionIndex)!
 
 		let f: NSFetchRequest
 		var showStatuses = false
