@@ -1,11 +1,3 @@
-//
-//  RepoSettingsViewController.swift
-//  Trailer
-//
-//  Created by Paul Tsochantaris on 25/05/2015.
-//
-//
-
 import UIKit
 
 class RepoSettingsViewController: UITableViewController {
@@ -52,6 +44,7 @@ class RepoSettingsViewController: UITableViewController {
 		}
 		cell.selectionStyle = cell.accessoryType==UITableViewCellAccessoryType.Checkmark ? UITableViewCellSelectionStyle.None : UITableViewCellSelectionStyle.Default
 		cell.textLabel?.text = RepoDisplayPolicy.labels[indexPath.row]
+		cell.textLabel?.textColor = RepoDisplayPolicy.colors[indexPath.row]
 		return cell
 	}
 

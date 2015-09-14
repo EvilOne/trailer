@@ -160,7 +160,6 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		searchHolder.addSubview(searchField)
 		tableView.tableHeaderView = searchHolder
 		tableView.contentOffset = CGPointMake(0, searchHolder.frame.size.height)
-		tableView.estimatedRowHeight = 110
 		tableView.rowHeight = UITableViewAutomaticDimension
 
 		if let detailNav = splitViewController?.viewControllers.last as? UINavigationController {
@@ -182,6 +181,11 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		viewMode = indexOfObject(tabBar.items!, value: item)==0 ? MasterViewMode.PullRequests : MasterViewMode.Issues
 	}
 
+	override func viewDidLayoutSubviews() {
+		super.viewDidLayoutSubviews()
+		tableView.tableHeaderView?.frame = CGRectMake(0, 0, tableView.bounds.size.width, 41)
+	}
+
 	override func viewWillAppear(animated: Bool) {
 		super.viewWillAppear(animated)
 		updateStatus()
@@ -189,6 +193,8 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	}
 
 	func reloadDataWithAnimation(animated: Bool) {
+
+		heightCache.removeAll()
 
 		if !Repo.interestedInIssues() && Repo.interestedInPrs() && viewMode == MasterViewMode.Issues {
 			showTabBar(false, animated: animated)
@@ -425,26 +431,58 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		return cell
 	}
 
-	override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
-		if let
-			p = fetchedResultsController.objectAtIndexPath(indexPath) as? PullRequest,
-			u = p.urlForOpening()
-			where viewMode == MasterViewMode.PullRequests
-		{
-			detailViewController.detailItem = NSURL(string: u)
-			detailViewController.catchupWithDataItemWhenLoaded = p.objectID
-		} else if let
-			i = fetchedResultsController.objectAtIndexPath(indexPath) as? Issue,
-			u = i.urlForOpening()
-			where viewMode == MasterViewMode.Issues
-		{
-			detailViewController.detailItem = NSURL(string: u)
-			detailViewController.catchupWithDataItemWhenLoaded = i.objectID
+	private var sizer: PRCell?
+	private var heightCache = [NSIndexPath : CGFloat]()
+	override func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
+		if sizer == nil {
+			sizer = tableView.dequeueReusableCellWithIdentifier("Cell") as? PRCell
+			sizer?.forDisplay = false
+		} else if let h = heightCache[indexPath] {
+			//DLog("using cached height for %d - %d", indexPath.section, indexPath.row)
+			return h
 		}
+		configureCell(sizer!, atIndexPath: indexPath)
+		UILayoutPriorityFittingSizeLevel
+		let h = sizer!.systemLayoutSizeFittingSize(CGSizeMake(tableView.bounds.width, UILayoutFittingCompressedSize.height),
+			withHorizontalFittingPriority: UILayoutPriorityRequired,
+			verticalFittingPriority: UILayoutPriorityFittingSizeLevel).height
+		heightCache[indexPath] = h
+		return h
+	}
 
-		if !detailViewController.isVisible {
-			showTabBar(false, animated: true)
-			showDetailViewController(detailViewController.navigationController!, sender: self)
+	override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+		if viewMode == MasterViewMode.PullRequests, let
+			p = fetchedResultsController.objectAtIndexPath(indexPath) as? PullRequest,
+			u = p.urlForOpening(),
+			url = NSURL(string: u)
+		{
+			if openItem(p, url: url, oid: p.objectID) {
+				tableView.deselectRowAtIndexPath(indexPath, animated: true)
+			}
+		} else if viewMode == MasterViewMode.Issues, let
+			i = fetchedResultsController.objectAtIndexPath(indexPath) as? Issue,
+			u = i.urlForOpening(),
+			url = NSURL(string: u)
+		{
+			if openItem(i, url: url, oid: i.objectID) {
+				tableView.deselectRowAtIndexPath(indexPath, animated: true)
+			}
+		}
+	}
+
+	private func openItem(item: ListableItem, url: NSURL, oid: NSManagedObjectID) -> Bool {
+		if Settings.openItemsDirectlyInSafari && !detailViewController.isVisible {
+			item.catchUpWithComments()
+			UIApplication.sharedApplication().openURL(url)
+			return true
+		} else {
+			detailViewController.detailItem = url
+			detailViewController.catchupWithDataItemWhenLoaded = oid
+			if !detailViewController.isVisible {
+				showTabBar(false, animated: true)
+				showDetailViewController(detailViewController.navigationController!, sender: self)
+			}
+			return false
 		}
 	}
 
@@ -658,11 +696,20 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		viewMode = MasterViewMode.Issues
 	}
 
-	var viewMode: MasterViewMode = .PullRequests {
-		didSet {
-			_fetchedResultsController = nil
-			tableView.reloadData()
-			updateStatus()
+	private var _viewMode: MasterViewMode = .PullRequests
+	var viewMode: MasterViewMode {
+		set {
+			if newValue != _viewMode {
+				_viewMode = newValue
+				_fetchedResultsController = nil
+				heightCache.removeAll()
+				tableView.reloadData()
+				tableView.scrollRectToVisible(CGRectMake(0, tableView.tableHeaderView?.frame.size.height ?? tableView.contentInset.top, 1, 1), animated: false)
+				updateStatus()
+			}
+		}
+		get {
+			return _viewMode
 		}
 	}
 

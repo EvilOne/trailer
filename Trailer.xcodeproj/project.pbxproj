@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 47;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -114,6 +114,7 @@
 		16B3B3581A34E9F7000BE6CC /* Reachability.m in Sources */ = {isa = PBXBuildFile; fileRef = 16B3B3541A34E9F7000BE6CC /* Reachability.m */; };
 		16B3B35A1A34EAEE000BE6CC /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B3B3591A34EAEE000BE6CC /* main.swift */; };
 		16B3B35B1A34EAEE000BE6CC /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B3B3591A34EAEE000BE6CC /* main.swift */; };
+		16B6B7C11BA3B94C006A509F /* ComplicationDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B6B7C01BA3B94C006A509F /* ComplicationDataSource.swift */; settings = {ASSET_TAGS = (); }; };
 		16B74E481A3B4AC800410EF6 /* PrTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16B74E471A3B4AC800410EF6 /* PrTable.swift */; };
 		16B94072182D136700F32061 /* dsa_pub.pem in Resources */ = {isa = PBXBuildFile; fileRef = 16B94070182D136700F32061 /* dsa_pub.pem */; };
 		16C90F021B13BC180095E8D5 /* RepoSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16C90F011B13BC180095E8D5 /* RepoSettingsViewController.swift */; };
@@ -141,6 +142,7 @@
 		16EDAB1C1AB4CB6F009B38DD /* StatusRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16EDAB1B1AB4CB6F009B38DD /* StatusRow.swift */; };
 		16EE6AD01A9A711C000A8483 /* CountLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16EE6ACF1A9A711C000A8483 /* CountLabel.swift */; };
 		16EE871B1A446BFE00A1D16F /* EmptyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16EE871A1A446BFE00A1D16F /* EmptyView.swift */; };
+		16F413701BA5850A006B0195 /* RepoCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F4136F1BA5850A006B0195 /* RepoCell.swift */; settings = {ASSET_TAGS = (); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -327,6 +329,7 @@
 		16B3B3531A34E9F7000BE6CC /* Reachability.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Reachability.h; path = Shared/Reachability.h; sourceTree = "<group>"; };
 		16B3B3541A34E9F7000BE6CC /* Reachability.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Reachability.m; path = Shared/Reachability.m; sourceTree = "<group>"; };
 		16B3B3591A34EAEE000BE6CC /* main.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = main.swift; path = Shared/main.swift; sourceTree = "<group>"; };
+		16B6B7C01BA3B94C006A509F /* ComplicationDataSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ComplicationDataSource.swift; sourceTree = "<group>"; };
 		16B74E471A3B4AC800410EF6 /* PrTable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrTable.swift; sourceTree = "<group>"; };
 		16B94070182D136700F32061 /* dsa_pub.pem */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = dsa_pub.pem; sourceTree = "<group>"; };
 		16C90F011B13BC180095E8D5 /* RepoSettingsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RepoSettingsViewController.swift; sourceTree = "<group>"; };
@@ -350,6 +353,7 @@
 		16EDAB1B1AB4CB6F009B38DD /* StatusRow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StatusRow.swift; sourceTree = "<group>"; };
 		16EE6ACF1A9A711C000A8483 /* CountLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CountLabel.swift; sourceTree = "<group>"; };
 		16EE871A1A446BFE00A1D16F /* EmptyView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EmptyView.swift; sourceTree = "<group>"; };
+		16F4136F1BA5850A006B0195 /* RepoCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RepoCell.swift; sourceTree = "<group>"; };
 		16F51FA019DE8C78007B0BB1 /* PRIVACY */ = {isa = PBXFileReference; lastKnownFileType = text; path = PRIVACY; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -532,9 +536,7 @@
 		16522D711AB03AE500B1C3FB /* WatchKit Extension */ = {
 			isa = PBXGroup;
 			children = (
-				162530501B7AAE49000E3F3B /* ExtensionDelegate.swift */,
-				16522D761AB03AE500B1C3FB /* GlanceController.swift */,
-				16813CBE1BA16D660020F8EB /* CommonController.swift */,
+				16B6B7BE1BA3B903006A509F /* Core */,
 				16E93D151AB4681800CA967E /* Detail */,
 				16E93D101AB467BF00CA967E /* List */,
 				16D845381AB4513F0098FB65 /* Sections */,
@@ -670,6 +672,17 @@
 			name = Globals;
 			sourceTree = "<group>";
 		};
+		16B6B7BE1BA3B903006A509F /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				162530501B7AAE49000E3F3B /* ExtensionDelegate.swift */,
+				16813CBE1BA16D660020F8EB /* CommonController.swift */,
+				16B6B7C01BA3B94C006A509F /* ComplicationDataSource.swift */,
+				16522D761AB03AE500B1C3FB /* GlanceController.swift */,
+			);
+			name = Core;
+			sourceTree = "<group>";
+		};
 		16B9552E17EC86D10005118F /* Data */ = {
 			isa = PBXGroup;
 			children = (
@@ -742,6 +755,7 @@
 				164840FD1AD19837009E6383 /* PopupManager.swift */,
 				164841011AD19933009E6383 /* NotificationManager.swift */,
 				16C90F011B13BC180095E8D5 /* RepoSettingsViewController.swift */,
+				16F4136F1BA5850A006B0195 /* RepoCell.swift */,
 			);
 			name = Settings;
 			sourceTree = "<group>";
@@ -897,7 +911,7 @@
 				};
 			};
 			buildConfigurationList = 168BC6A517EC2DF000BC4584 /* Build configuration list for PBXProject "Trailer" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 6.3";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -1019,6 +1033,7 @@
 				16C9A27A1A44DD0200EE54EC /* CommentBlacklistViewController.swift in Sources */,
 				164840FC1AD196D6009E6383 /* SettingsManager.swift in Sources */,
 				1633C1931ABCEC4A0086C692 /* Issue.swift in Sources */,
+				16F413701BA5850A006B0195 /* RepoCell.swift in Sources */,
 				1606F1BD1A471CDC0088368E /* RespositoriesViewController.swift in Sources */,
 				166A84C41A45CEE000A3B292 /* PickerViewController.swift in Sources */,
 				166A84C21A45A37700A3B292 /* AdvancedSettingsViewController.swift in Sources */,
@@ -1062,6 +1077,7 @@
 				16EDAB1A1AB4C2D4009B38DD /* CommentRow.swift in Sources */,
 				16E93D121AB467DA00CA967E /* PRListController.swift in Sources */,
 				16E93D191AB46CEE00CA967E /* PRRow.swift in Sources */,
+				16B6B7C11BA3B94C006A509F /* ComplicationDataSource.swift in Sources */,
 				16813CBF1BA16D660020F8EB /* CommonController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -491,7 +491,7 @@ final class Settings {
 		set { set("AUTO_PARTICIPATE_ON_TEAM_MENTIONS", newValue) }
 	}
 
-	class var showIssuesInGlance: Bool {
+	class var preferIssuesInWatch: Bool {
 		get { return get("SHOW_ISSUES_IN_WATCH_GLANCE") as? Bool ?? false }
 		set { set("SHOW_ISSUES_IN_WATCH_GLANCE", newValue) }
 	}
@@ -519,6 +519,11 @@ final class Settings {
 	class var dumpAPIResponsesInConsole: Bool {
 		get { return get("DUMP_API_RESPONSES_IN_CONSOLE") as? Bool ?? false }
 		set { set("DUMP_API_RESPONSES_IN_CONSOLE", newValue) }
+	}
+
+	class var openItemsDirectlyInSafari: Bool {
+		get { return get("OPEN_ITEMS_DIRECTLY_IN_SAFARI") as? Bool ?? false }
+		set { set("OPEN_ITEMS_DIRECTLY_IN_SAFARI", newValue) }
 	}
 
 	////////////////////////////// DEFAULT TRUE
