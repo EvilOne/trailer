@@ -1,11 +1,7 @@
 
 #if os(iOS)
-import UIKit
+	import UIKit
 #endif
-
-//////////////////////////////// Somehow this won't compile if it's not here...
-
-typealias Completion = ()->Void
 
 final class PopTimer : NSObject {
 
@@ -59,7 +55,7 @@ final class Settings {
 			"INCLUDE_LABELS_IN_FILTER", "INCLUDE_STATUSES_IN_FILTER", "HOTKEY_COMMAND_MODIFIER", "HOTKEY_OPTION_MODIFIER", "HOTKEY_SHIFT_MODIFIER", "GRAY_OUT_WHEN_REFRESHING", "SHOW_ISSUES_MENU",
 			"AUTO_PARTICIPATE_ON_TEAM_MENTIONS", "SHOW_ISSUES_IN_WATCH_GLANCE", "ASSIGNED_PR_HANDLING_POLICY", "HIDE_DESCRIPTION_IN_WATCH_DETAIL_VIEW", "AUTO_REPEAT_SETTINGS_EXPORT", "DONT_CONFIRM_SETTINGS_IMPORT",
 			"LAST_EXPORT_URL", "LAST_EXPORT_TIME", "CLOSE_HANDLING_POLICY_2", "MERGE_HANDLING_POLICY_2", "LAST_PREFS_TAB_SELECTED_OSX", "NEW_PR_DISPLAY_POLICY_INDEX", "NEW_ISSUE_DISPLAY_POLICY_INDEX",
-            "INCLUDE_SERVERS_IN_FILTER", "INCLUDE_USERS_IN_FILTER", "INCLUDE_TITLES_IN_FILTER"]
+            "INCLUDE_SERVERS_IN_FILTER", "INCLUDE_USERS_IN_FILTER", "INCLUDE_TITLES_IN_FILTER", "DUMP_API_RESPONSES_IN_CONSOLE", "OPEN_ITEMS_DIRECTLY_IN_SAFARI"]
 	}
 
     class func checkMigration() {
@@ -166,7 +162,7 @@ final class Settings {
 		#if os(OSX)
 		var keyIsGood: Bool
 		if let k = key {
-			keyIsGood = !contains(["LAST_SUCCESSFUL_REFRESH", "LAST_EXPORT_URL", "LAST_EXPORT_TIME"], k)
+			keyIsGood = !["LAST_SUCCESSFUL_REFRESH", "LAST_EXPORT_URL", "LAST_EXPORT_TIME"].contains(k)
 		} else {
 			keyIsGood = true
 		}
@@ -218,13 +214,13 @@ final class Settings {
 			return false
 		}
 		NSNotificationCenter.defaultCenter().postNotificationName(SETTINGS_EXPORTED, object: nil)
-		DLog("Written settings to %@", url.absoluteString!)
+		DLog("Written settings to %@", url.absoluteString)
 		return true
 	}
 
 	class func readFromURL(url: NSURL) -> Bool {
 		if let settings = NSDictionary(contentsOfURL: url) {
-			DLog("Reading settings from %@", url.absoluteString!)
+			DLog("Reading settings from %@", url.absoluteString)
 			resetAllSettings()
 			for k in allFields() {
 				if let v: AnyObject = settings[k] {
@@ -495,7 +491,7 @@ final class Settings {
 		set { set("AUTO_PARTICIPATE_ON_TEAM_MENTIONS", newValue) }
 	}
 
-	class var showIssuesInGlance: Bool {
+	class var preferIssuesInWatch: Bool {
 		get { return get("SHOW_ISSUES_IN_WATCH_GLANCE") as? Bool ?? false }
 		set { set("SHOW_ISSUES_IN_WATCH_GLANCE", newValue) }
 	}
@@ -519,6 +515,16 @@ final class Settings {
         get { return get("INCLUDE_SERVERS_IN_FILTER") as? Bool ?? false }
         set { set("INCLUDE_SERVERS_IN_FILTER", newValue) }
     }
+
+	class var dumpAPIResponsesInConsole: Bool {
+		get { return get("DUMP_API_RESPONSES_IN_CONSOLE") as? Bool ?? false }
+		set { set("DUMP_API_RESPONSES_IN_CONSOLE", newValue) }
+	}
+
+	class var openItemsDirectlyInSafari: Bool {
+		get { return get("OPEN_ITEMS_DIRECTLY_IN_SAFARI") as? Bool ?? false }
+		set { set("OPEN_ITEMS_DIRECTLY_IN_SAFARI", newValue) }
+	}
 
 	////////////////////////////// DEFAULT TRUE
 

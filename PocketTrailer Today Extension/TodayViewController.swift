@@ -1,7 +1,31 @@
 
 import UIKit
+import CoreData
 import Foundation
 import NotificationCenter
+
+let app = { () -> ExtensionGlobals! in
+	Settings.checkMigration()
+	DataManager.checkMigration()
+	return ExtensionGlobals()
+	}()
+
+let api = app
+
+final class ExtensionGlobals {
+
+	var refreshesSinceLastLabelsCheck = [NSManagedObjectID:Int]()
+	var refreshesSinceLastStatusCheck = [NSManagedObjectID:Int]()
+	var isRefreshing = false
+	var preferencesDirty = false
+	var lastRepoCheck = never()
+
+	func postNotificationOfType(type: PRNotificationType, forItem: NSManagedObject) {}
+	func setMinimumBackgroundFetchInterval(interval: NSTimeInterval) -> Void {}
+	func clearAllBadLinks() -> Void {}
+	func haveCachedAvatar(path: String, tryLoadAndCallback: (IMAGE_CLASS?, String) -> Void) -> Bool { return false }
+	func cachePathForAvatar(u: String) -> (String, String) { return ("", "") }
+}
 
 final class TodayViewController: UIViewController, NCWidgetProviding {
 
@@ -14,35 +38,35 @@ final class TodayViewController: UIViewController, NCWidgetProviding {
 
 	private let paragraph = NSMutableParagraphStyle()
 
-	private var brightAttributes: [NSObject: AnyObject] {
+	private var brightAttributes: [String: AnyObject] {
 		return [
 			NSForegroundColorAttributeName: UIColor.whiteColor(),
 			NSFontAttributeName: UIFont.systemFontOfSize(UIFont.systemFontSize()+2.0),
 			NSParagraphStyleAttributeName: paragraph ]
 	}
 
-	private var normalAttributes: [NSObject: AnyObject] {
+	private var normalAttributes: [String: AnyObject] {
 		return [
 			NSForegroundColorAttributeName: UIColor.lightGrayColor(),
 			NSFontAttributeName: UIFont.systemFontOfSize(UIFont.systemFontSize()+2.0),
 			NSParagraphStyleAttributeName: paragraph ]
 	}
 
-	private var dimAttributes: [NSObject: AnyObject] {
+	private var dimAttributes: [String: AnyObject] {
 		return [
 			NSForegroundColorAttributeName: UIColor.grayColor(),
 			NSFontAttributeName: UIFont.systemFontOfSize(UIFont.systemFontSize()+2.0),
 			NSParagraphStyleAttributeName: paragraph ]
 	}
 
-	private var redAttributes: [NSObject: AnyObject] {
+	private var redAttributes: [String: AnyObject] {
 		return [
 			NSForegroundColorAttributeName: UIColor.redColor(),
 			NSFontAttributeName: UIFont.systemFontOfSize(UIFont.systemFontSize()+2.0),
 			NSParagraphStyleAttributeName: paragraph ]
 	}
 
-	private var smallAttributes: [NSObject: AnyObject] {
+	private var smallAttributes: [String: AnyObject] {
 		return [
 			NSForegroundColorAttributeName: UIColor.lightGrayColor(),
 			NSFontAttributeName: UIFont.systemFontOfSize(UIFont.smallSystemFontSize()),
@@ -52,16 +76,14 @@ final class TodayViewController: UIViewController, NCWidgetProviding {
 	override func viewDidLoad() {
 		super.viewDidLoad()
 
-		dataReadonly = true
-
 		paragraph.paragraphSpacing = 4
 
-		prButton = UIButton.buttonWithType(UIButtonType.Custom) as! UIButton
+		prButton = UIButton(type: UIButtonType.Custom)
 		prButton.addTarget(self, action: Selector("prTapped"), forControlEvents: UIControlEvents.TouchUpInside)
 		prButton.setBackgroundImage(imageFromColor(UIColor(white: 1.0, alpha: 0.2)), forState: UIControlState.Highlighted)
 		view.addSubview(prButton)
 
-		issuesButton = UIButton.buttonWithType(UIButtonType.Custom) as! UIButton
+		issuesButton = UIButton(type: UIButtonType.Custom)
 		issuesButton.addTarget(self, action: Selector("issuesTapped"), forControlEvents: UIControlEvents.TouchUpInside)
 		issuesButton.setBackgroundImage(imageFromColor(UIColor(white: 1.0, alpha: 0.2)), forState: UIControlState.Highlighted)
 		view.addSubview(issuesButton)
@@ -139,7 +161,7 @@ final class TodayViewController: UIViewController, NCWidgetProviding {
 		}
 	}
 
-	func widgetPerformUpdateWithCompletionHandler(completionHandler: ((NCUpdateResult) -> Void)!) {
+	func widgetPerformUpdateWithCompletionHandler(completionHandler: ((NCUpdateResult) -> Void)) {
 		// Perform any setup necessary in order to update the view.
 
 		// If an error is encountered, use NCUpdateResult.Failed

@@ -1,5 +1,5 @@
 
-import UIKit
+import SafariServices
 
 final class QuickStartViewController: UIViewController, UITextFieldDelegate {
 
@@ -43,25 +43,17 @@ final class QuickStartViewController: UIViewController, UITextFieldDelegate {
 		dismissViewControllerAnimated(true, completion: nil)
 	}
 
-	override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-		let targetUrl = "https://github.com/settings/tokens/new"
-		if let destination = segue.destinationViewController as? GithubViewController {
-			destination.pathToLoad = targetUrl
-		} else if let destination = segue.destinationViewController as? UINavigationController {
-			(destination.topViewController as? GithubViewController)?.pathToLoad = targetUrl
-		}
+	@IBAction func openGitHubSelected(sender: AnyObject) {
+		let s = SFSafariViewController(URL: NSURL(string: "https://github.com/settings/tokens/new")!)
+		s.view.tintColor = self.view.tintColor
+		self.presentViewController(s, animated: true, completion: nil)
 	}
 
 	@IBAction func testSelected(sender: UIButton) {
 		testMode()
 		api.testApiToServer(newServer) { [weak self] error in
 			if let e = error {
-				let a = UIAlertView(
-					title: "Testing the token failed - please check that you have pasted your token correctly",
-					message: e.localizedDescription,
-					delegate: nil,
-					cancelButtonTitle: "OK")
-				a.show()
+				showMessage("Testing the token failed - please check that you have pasted your token correctly", e.localizedDescription)
 				self!.normalMode()
 			} else {
 				self!.feedback.text = "Syncing GitHub data for the first time.\n\nThis could take a little while, please wait..."
@@ -77,20 +69,12 @@ final class QuickStartViewController: UIViewController, UITextFieldDelegate {
 			checkTimer?.invalidate()
 			checkTimer = nil
 			if newServer.lastSyncSucceeded?.boolValue ?? false {
-				UIAlertView(
-					title: "Setup complete!",
-					message: "You can tweak options & behaviour from the settings.\n\nPocketTrailer only has read-only access to your Github data, so feel free to experiment, you can't damage your data or settings on GitHub.",
-					delegate: nil,
-					cancelButtonTitle: "OK").show()
                 dismissViewControllerAnimated(true, completion: {
                     popupManager.getMasterController().updateTabBarVisibility(true)
+					showMessage("Setup complete!", "You can tweak options & behaviour from the settings.\n\nPocketTrailer only has read-only access to your Github data, so feel free to experiment, you can't damage your data or settings on GitHub.")
                 })
 			} else {
-				UIAlertView(
-					title: "Syncing with this server failed - please check that your network connection is working and that you have pasted your token correctly",
-					message: nil,
-					delegate: nil,
-					cancelButtonTitle: "OK").show()
+				showMessage("Syncing with this server failed - please check that your network connection is working and that you have pasted your token correctly", nil)
 				normalMode()
 			}
 		}
@@ -101,7 +85,7 @@ final class QuickStartViewController: UIViewController, UITextFieldDelegate {
 			view.endEditing(false)
 			return false
 		}
-		token = (textField.text as NSString).stringByReplacingCharactersInRange(range, withString: string)
+		token = (textField.text ?? "").stringByReplacingCharactersInRange(range, withString: string)
 		token = token.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
 		testButton.enabled = !token.isEmpty
 		link.alpha = testButton.enabled ? 0.5 : 1.0

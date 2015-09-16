@@ -1,7 +1,7 @@
 
 import UIKit
 
-let statusAttributes: [NSObject : AnyObject] = {
+let statusAttributes: [String : AnyObject] = {
 	let paragraphStyle = NSMutableParagraphStyle()
 	paragraphStyle.paragraphSpacing = 6.0
 
@@ -17,6 +17,8 @@ final class PRCell: UITableViewCell {
 	private let readCount = CountLabel(frame: CGRectZero)
 	private var failedToLoadImage: String?
 	private var waitingForImageInPath: String?
+
+	var forDisplay = true
 
 	@IBOutlet weak var _image: UIImageView!
 	@IBOutlet weak var _title: UILabel!
@@ -93,7 +95,9 @@ final class PRCell: UITableViewCell {
 		_title.attributedText = pullRequest.titleWithFont(_title.font, labelFont: detailFont.fontWithSize(detailFont.pointSize-2), titleColor: UIColor.darkTextColor())
 		_description.attributedText = pullRequest.subtitleWithFont(detailFont, lightColor: UIColor.lightGrayColor(), darkColor: UIColor.darkGrayColor())
 
-		setCountsAndImage(pullRequest)
+		if forDisplay {
+			setCountsAndImage(pullRequest)
+		}
 
 		var statusText : NSMutableAttributedString?
 		var statusCount = 0
@@ -118,12 +122,16 @@ final class PRCell: UITableViewCell {
 			statusToAvatarDistance.constant = 9.0
 			statusToDescriptionDistance.constant = 9.0
 			statusToBottomDistance.constant = 4.0
-			accessibilityLabel = "\(pullRequest.accessibleTitle()), \(unreadCount.text) unread comments, \(readCount.text) total comments, \(pullRequest.accessibleSubtitle()). \(statusCount) statuses: \(statusString)"
+			if forDisplay {
+				accessibilityLabel = "\(pullRequest.accessibleTitle()), \(unreadCount.text) unread comments, \(readCount.text) total comments, \(pullRequest.accessibleSubtitle()). \(statusCount) statuses: \(statusString)"
+			}
 		} else {
 			statusToAvatarDistance.constant = 0.0
 			statusToDescriptionDistance.constant = 0.0
 			statusToBottomDistance.constant = 0.0
-			accessibilityLabel = "\(pullRequest.accessibleTitle()), \(unreadCount.text) unread comments, \(readCount.text) total comments, \(pullRequest.accessibleSubtitle())"
+			if forDisplay {
+				accessibilityLabel = "\(pullRequest.accessibleTitle()), \(unreadCount.text) unread comments, \(readCount.text) total comments, \(pullRequest.accessibleSubtitle())"
+			}
 		}
 	}
 
@@ -133,9 +141,10 @@ final class PRCell: UITableViewCell {
 		_description.attributedText = issue.subtitleWithFont(detailFont, lightColor: UIColor.lightGrayColor(), darkColor: UIColor.darkGrayColor())
 		_statuses.attributedText = nil
 
-		setCountsAndImage(issue)
-
-		accessibilityLabel = "\(issue.accessibleTitle()), \(unreadCount.text) unread comments, \(readCount.text) total comments, \(issue.accessibleSubtitle())"
+		if forDisplay {
+			setCountsAndImage(issue)
+			accessibilityLabel = "\(issue.accessibleTitle()), \(unreadCount.text) unread comments, \(readCount.text) total comments, \(issue.accessibleSubtitle())"
+		}
 	}
 
 	private func setCountsAndImage(item: ListableItem) {
@@ -143,7 +152,6 @@ final class PRCell: UITableViewCell {
 		let _commentsNew = item.showNewComments() ? item.unreadComments?.integerValue ?? 0 : 0
 
 		readCount.text = itemCountFormatter.stringFromNumber(_commentsTotal)
-		let readSize = readCount.sizeThatFits(CGSizeMake(200, 14))
 		readCount.hidden = (_commentsTotal == 0)
 
 		unreadCount.hidden = (_commentsNew == 0)
@@ -155,18 +163,18 @@ final class PRCell: UITableViewCell {
 	private func loadImageAtPath(imagePath: String?) {
 		waitingForImageInPath = imagePath
 		if let path = imagePath {
-			if (!api.haveCachedAvatar(path) { [weak self] image in
-				if self!.waitingForImageInPath == path {
+			if (!api.haveCachedAvatar(path) { [weak self] image, _ in
+				if self?.waitingForImageInPath == path {
 					if image != nil {
 						// image loaded
-						self!._image.image = image
-						self!.failedToLoadImage = nil
+						self?._image.image = image
+						self?.failedToLoadImage = nil
 					} else {
 						// load failed / no image
-						self!._image.image = UIImage(named: "avatarPlaceHolder")
-						self!.failedToLoadImage = imagePath
+						self?._image.image = UIImage(named: "avatarPlaceHolder")
+						self?.failedToLoadImage = imagePath
 					}
-					self!.waitingForImageInPath = nil
+					self?.waitingForImageInPath = nil
 				}
 			}) {
 				// prepare UI for over-the-network load

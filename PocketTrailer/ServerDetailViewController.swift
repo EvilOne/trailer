@@ -1,5 +1,5 @@
 
-import UIKit
+import SafariServices
 import CoreData
 
 final class ServerDetailViewController: UIViewController, UITextFieldDelegate {
@@ -15,17 +15,16 @@ final class ServerDetailViewController: UIViewController, UITextFieldDelegate {
 
 	var serverId: NSManagedObjectID?
 
-	private var targetUrl: String?
 	private var focusedField: UITextField?
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		var a: ApiServer
 		if let sid = serverId {
-			a = mainObjectContext.existingObjectWithID(sid, error: nil) as! ApiServer
+			a = existingObjectWithID(sid) as! ApiServer
 		} else {
 			a = ApiServer.addDefaultGithubInMoc(mainObjectContext)
-			mainObjectContext.save(nil)
+			try! mainObjectContext.save()
 			serverId = a.objectID
 		}
 		name.text = a.label
@@ -57,21 +56,18 @@ final class ServerDetailViewController: UIViewController, UITextFieldDelegate {
 			sender.enabled = false
 			api.testApiToServer(a) { error in
 				sender.enabled = true
-				UIAlertView(title: error != nil ? "Failed" : "Success",
-					message: error?.localizedDescription,
-					delegate: nil,
-					cancelButtonTitle: "OK").show()
+				showMessage(error != nil ? "Failed" : "Success", error?.localizedDescription)
 			}
 		}
 	}
 
 	private func updateServerFromForm() -> ApiServer? {
 		if let sid = serverId {
-			let a = mainObjectContext.existingObjectWithID(sid, error: nil) as! ApiServer
-			a.label = name.text.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-			a.apiPath = apiPath.text.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-			a.webPath = webFrontEnd.text.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
-			a.authToken = authToken.text.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
+			let a = existingObjectWithID(sid) as! ApiServer
+			a.label = name.text?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
+			a.apiPath = apiPath.text?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
+			a.webPath = webFrontEnd.text?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
+			a.authToken = authToken.text?.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceAndNewlineCharacterSet())
 			a.reportRefreshFailures = reportErrors.on
 			a.lastSyncSucceeded = true
 			app.preferencesDirty = true
@@ -115,52 +111,39 @@ final class ServerDetailViewController: UIViewController, UITextFieldDelegate {
 			return false
 		}
 		if textField == authToken {
-			let newToken = (textField.text as NSString).stringByReplacingCharactersInRange(range, withString: string)
+			let newToken = textField.text?.stringByReplacingCharactersInRange(range, withString: string)
 			processTokenStateFrom(newToken)
 		}
 		return true
 	}
 
 	@IBAction func watchListSelected(sender: UIBarButtonItem) {
-		if let u = checkForValidPath()?.absoluteString {
-			targetUrl = u + "/watching"
-			performSegueWithIdentifier("openGithub", sender: self)
-		}
+		openGitHub("/watching")
 	}
 
 	@IBAction func createTokenSelected(sender: UIBarButtonItem) {
-		if let u = checkForValidPath()?.absoluteString {
-			targetUrl = u + "/settings/tokens/new"
-			performSegueWithIdentifier("openGithub", sender: self)
-		}
+		openGitHub("/settings/tokens/new")
 	}
 
 	@IBAction func existingTokensSelected(sender: UIBarButtonItem) {
-		if let u = checkForValidPath()?.absoluteString {
-			targetUrl = u + "/settings/applications"
-			performSegueWithIdentifier("openGithub", sender: self)
-		}
+		openGitHub("/settings/applications")
 	}
 
 	private func checkForValidPath() -> NSURL? {
-		if let u = NSURL(string: webFrontEnd.text) {
+		if let text = webFrontEnd.text, u = NSURL(string: text) {
 			return u
 		} else {
-			UIAlertView(title: "Need a valid web server",
-				message: "Please specify a valid URL for the 'Web Front End' for this server in order to visit it",
-				delegate: nil,
-				cancelButtonTitle: "OK").show()
+			showMessage("Need a valid web server", "Please specify a valid URL for the 'Web Front End' for this server in order to visit it")
 			return nil
 		}
 	}
 
-	override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-		if let destination = segue.destinationViewController as? GithubViewController {
-			destination.pathToLoad = targetUrl
-		} else if let destination = segue.destinationViewController as? UINavigationController {
-			(destination.topViewController as? GithubViewController)?.pathToLoad = targetUrl
+	private func openGitHub(url: String) {
+		if let u = checkForValidPath()?.absoluteString {
+			let s = SFSafariViewController(URL: NSURL(string: u + url)!)
+			s.view.tintColor = self.view.tintColor
+			self.presentViewController(s, animated: true, completion: nil)
 		}
-		targetUrl = nil
 	}
 
 	@IBAction func deleteSelected(sender: UIBarButtonItem) {
@@ -177,7 +160,7 @@ final class ServerDetailViewController: UIViewController, UITextFieldDelegate {
 	}
 
 	private func deleteServer() {
-		if let a = mainObjectContext.existingObjectWithID(serverId!, error: nil) {
+		if let a = existingObjectWithID(serverId!) {
 			mainObjectContext.deleteObject(a)
 			DataManager.saveDB()
 		}

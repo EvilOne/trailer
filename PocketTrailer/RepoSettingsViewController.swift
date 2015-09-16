@@ -1,11 +1,3 @@
-//
-//  RepoSettingsViewController.swift
-//  Trailer
-//
-//  Created by Paul Tsochantaris on 25/05/2015.
-//
-//
-
 import UIKit
 
 class RepoSettingsViewController: UITableViewController {
@@ -14,20 +6,16 @@ class RepoSettingsViewController: UITableViewController {
 	var allPrsIndex: Int = -1
 	var allIssuesIndex: Int = -1
 
-	private let settingsChangedTimer: PopTimer
-
-	required init(coder aDecoder: NSCoder) {
-		settingsChangedTimer = PopTimer(timeInterval: 1.0) {
-			DataManager.postProcessAllItems()
-			popupManager.getMasterController().reloadDataWithAnimation(true)
-		}
-		super.init(coder: aDecoder)
-	}
+	private var settingsChangedTimer: PopTimer!
 
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		if repo == nil {
 			title = "All Repos..."
+		}
+		settingsChangedTimer = PopTimer(timeInterval: 1.0) {
+			DataManager.postProcessAllItems()
+			popupManager.getMasterController().reloadDataWithAnimation(true)
 		}
 	}
 
@@ -40,7 +28,7 @@ class RepoSettingsViewController: UITableViewController {
 	}
 
 	override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-		let cell = tableView.dequeueReusableCellWithIdentifier("Cell") as! UITableViewCell
+		let cell = tableView.dequeueReusableCellWithIdentifier("Cell")!
 		if repo == nil {
 			if indexPath.section == 0 {
 				cell.accessoryType = (allPrsIndex==indexPath.row) ? UITableViewCellAccessoryType.Checkmark : UITableViewCellAccessoryType.None
@@ -56,6 +44,7 @@ class RepoSettingsViewController: UITableViewController {
 		}
 		cell.selectionStyle = cell.accessoryType==UITableViewCellAccessoryType.Checkmark ? UITableViewCellSelectionStyle.None : UITableViewCellSelectionStyle.Default
 		cell.textLabel?.text = RepoDisplayPolicy.labels[indexPath.row]
+		cell.textLabel?.textColor = RepoDisplayPolicy.colors[indexPath.row]
 		return cell
 	}
 

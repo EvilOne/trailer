@@ -1,149 +1,117 @@
 
 import WatchKit
+import WatchConnectivity
 
-final class SectionController: WKInterfaceController {
+final class SectionController: CommonController {
 
 	@IBOutlet weak var table: WKInterfaceTable!
-	private var selectedIndex: Int?
+	@IBOutlet weak var statusLabel: WKInterfaceLabel!
+
+	private var rowControllers = [PopulatableRow]()
 
 	override func awakeWithContext(context: AnyObject?) {
+		_statusLabel = statusLabel
+		_table = table
 		super.awakeWithContext(context)
-
-		dataReadonly = true
-		Settings.clearCache()
-	}
-
-	override func willActivate() {
-		super.willActivate()
-		buildUI()
-		atNextEvent() { [weak self] in
-			if let i = self!.selectedIndex {
-				self!.table.scrollToRowAtIndex(i)
-				self!.selectedIndex = nil
-			}
-		}
 	}
 
 	@IBAction func clearMergedSelected() {
-		presentControllerWithName("Command Controller", context: ["command": "clearAllMerged"])
+		showStatus("Clearing merged", hideTable: true)
+		requestData("clearAllMerged")
 	}
 
 	@IBAction func clearClosedSelected() {
-		presentControllerWithName("Command Controller", context: ["command": "clearAllClosed"])
+		showStatus("Clearing closed", hideTable: true)
+		requestData("clearAllClosed")
 	}
 
 	@IBAction func markAllReadSelected() {
-		presentControllerWithName("Command Controller", context: ["command": "markEverythingRead"])
+		showStatus("Marking all as read", hideTable: true)
+		requestData("markEverythingRead")
 	}
 
 	@IBAction func refreshSelected() {
-		presentControllerWithName("Command Controller", context: ["command": "refresh"])
+		showStatus("Refreshing", hideTable: true)
+		requestData("refresh")
 	}
 
-	class titleEntry {
-		var title: String
-		init(_ t: String) { title = t }
-	}
-
-	class attributedTitleEntry {
-		var title: NSAttributedString
-		init(_ t: NSAttributedString) { title = t }
-	}
-
-	class prEntry {
-		var section: PullRequestSection
-		init(_ s: PullRequestSection) { section = s }
-	}
-
-	class issueEntry {
-		var section: PullRequestSection
-		init(_ s: PullRequestSection) { section = s }
+	override func requestData(command: String?) {
+		var params = ["list": "overview"]
+		if let command = command {
+			params["command"] = command
+		}
+		sendRequest(params)
 	}
 
 	override func table(table: WKInterfaceTable, didSelectRowAtIndex rowIndex: Int) {
-		selectedIndex = rowIndex
-		if let t = rowTypes[rowIndex] as? prEntry {
-			pushControllerWithName("ListController", context: [ SECTION_KEY: t.section.rawValue, TYPE_KEY: "PRS" ] )
-		} else if let t = rowTypes[rowIndex] as? issueEntry {
-			pushControllerWithName("ListController", context: [ SECTION_KEY: t.section.rawValue, TYPE_KEY: "ISSUES" ] )
-		}
+		let r = rowControllers[rowIndex] as! SectionRow
+		let section = r.section?.rawValue
+		pushControllerWithName("ListController", context: [ SECTION_KEY: section!, TYPE_KEY: r.type! ] )
 	}
 
-	private var boundaryIndex:Int = 0
-    private var rowTypes = [AnyObject]()
+	override func updateFromData(response: [NSString : AnyObject]) {
 
-	private func buildUI() {
+		rowControllers.removeAll(keepCapacity: false)
+		let result = response["result"] as! [String : AnyObject]
 
-		rowTypes.removeAll(keepCapacity: false)
+		let prType = "prs"
+		let prs = result[prType] as! [String : AnyObject]
+		let totalPrs = prs["total"] as! Int
+		let pt = TitleRow()
+		rowControllers.append(pt)
+		if totalPrs > 0 {
+			pt.title = "\(totalPrs) PULL REQUESTS"
+			for prSection in PullRequestSection.apiTitles {
+				if prSection == PullRequestSection.None.apiName() { continue }
 
-		func appendNonZeroPrs(s: PullRequestSection) {
-			if PullRequest.countRequestsInSection(s, moc: mainObjectContext) > 0 {
-				rowTypes.append(prEntry(s))
+				if let section = prs[prSection], count = section["total"] as? Int, unread = section["unread"] as? Int where count > 0 {
+					let s = SectionRow()
+					s.section = sectionFromApi(prSection)
+					s.totalCount = count
+					s.unreadCount = unread
+					s.type = prType
+					rowControllers.append(s)
+				}
 			}
-		}
-
-		func appendNonZeroIssues(s: PullRequestSection) {
-			if Issue.countIssuesInSection(s, moc: mainObjectContext) > 0 {
-				rowTypes.append(issueEntry(s))
-			}
-		}
-
-		let totalPrs = PullRequest.countAllRequestsInMoc(mainObjectContext)
-		if totalPrs==0 {
-			rowTypes.append(attributedTitleEntry(DataManager.reasonForEmptyWithFilter(nil)))
 		} else {
-			rowTypes.append(titleEntry(totalPrs==1 ? "1 PULL REQUEST" : "\(totalPrs) PULL REQUESTS"))
-			appendNonZeroPrs(PullRequestSection.Mine)
-			appendNonZeroPrs(PullRequestSection.Participated)
-			appendNonZeroPrs(PullRequestSection.Merged)
-			appendNonZeroPrs(PullRequestSection.Closed)
-			appendNonZeroPrs(PullRequestSection.All)
+			pt.title = prs["error"] as? String
 		}
 
-		boundaryIndex = rowTypes.count
 
-		if Repo.interestedInIssues() {
-			let totalIssues = Issue.countAllIssuesInMoc(mainObjectContext)
-			if totalIssues==0 {
-				rowTypes.append(attributedTitleEntry(DataManager.reasonForEmptyIssuesWithFilter(nil)))
-			} else {
-				rowTypes.append(titleEntry(totalIssues==1 ? "1 ISSUE" : "\(totalIssues) ISSUES"))
-				appendNonZeroIssues(PullRequestSection.Mine)
-				appendNonZeroIssues(PullRequestSection.Participated)
-				appendNonZeroIssues(PullRequestSection.Merged)
-				appendNonZeroIssues(PullRequestSection.Closed)
-				appendNonZeroIssues(PullRequestSection.All)
+		let issueType = "issues"
+		let issues = result[issueType] as! [String : AnyObject]
+		let totalIssues = issues["total"] as! Int
+		let it = TitleRow()
+		rowControllers.append(it)
+		if totalIssues > 0 {
+			it.title = "\(totalIssues) ISSUES"
+			for issueSection in PullRequestSection.apiTitles {
+				if issueSection == PullRequestSection.None.apiName() { continue }
+				if issueSection == PullRequestSection.Merged.apiName() { continue }
+
+				if let section = issues[issueSection], count = section["total"] as? Int, unread = section["unread"] as? Int where count > 0 {
+					let s = SectionRow()
+					s.section = sectionFromApi(issueSection)
+					s.totalCount = count
+					s.unreadCount = unread
+					s.type = issueType
+					rowControllers.append(s)
+				}
 			}
+		} else {
+			it.title = issues["error"] as? String
 		}
 
-		setTitle("Sections")
-
-		var rowControllerTypes = [String]()
-		for type in rowTypes {
-			if type is titleEntry || type is attributedTitleEntry{
-				rowControllerTypes.append("TitleRow")
-			} else if type is prEntry || type is issueEntry {
-				rowControllerTypes.append("SectionRow")
-			}
-		}
-		table.setRowTypes(rowControllerTypes)
+		table.setRowTypes(rowControllers.map({ $0.rowType() }))
 
 		var index = 0
-		for type in rowTypes {
-			if let t = type as? titleEntry {
-				let r = table.rowControllerAtIndex(index) as! TitleRow
-				r.titleL.setText(t.title)
-			} else if let t = type as? attributedTitleEntry {
-				let r = table.rowControllerAtIndex(index) as! TitleRow
-				r.group.setBackgroundColor(UIColor.whiteColor())
-				r.group.setAlpha(1.0)
-				r.titleL.setAttributedText(t.title)
-			} else if let t = type as? prEntry {
-				(table.rowControllerAtIndex(index) as! SectionRow).setPr(t.section)
-			} else if let t = type as? issueEntry {
-				(table.rowControllerAtIndex(index) as! SectionRow).setIssue(t.section)
+		for rc in rowControllers {
+			if let c = table.rowControllerAtIndex(index++) as? PopulatableRow {
+				c.populateFrom(rc)
 			}
-			index++
 		}
+
+		showStatus("", hideTable: false)
+		(WKExtension.sharedExtension().delegate as! ExtensionDelegate).updateComplications()
 	}
 }

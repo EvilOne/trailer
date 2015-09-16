@@ -1,88 +1,89 @@
 
 import WatchKit
-import Foundation
+import WatchConnectivity
 
-final class PRListController: WKInterfaceController {
+final class PRListController: CommonController {
 
-	@IBOutlet weak var emptyLabel: WKInterfaceLabel!
 	@IBOutlet weak var table: WKInterfaceTable!
+	@IBOutlet var statusLabel: WKInterfaceLabel!
 
-	private var itemsInSection: [ListableItem]!
-	private var sectionIndex: Int!
-	private var prs: Bool!
+	private var section: PullRequestSection!
+	private var type: String!
 	private var selectedIndex: Int?
+	private var lastCount: Int = 0
 
 	override func awakeWithContext(context: AnyObject?) {
-		super.awakeWithContext(context)
 
 		let c = context as! [NSObject : AnyObject]
-		sectionIndex = c[SECTION_KEY] as! Int
+		section = PullRequestSection(rawValue: c[SECTION_KEY] as! Int)
+		type = c[TYPE_KEY] as! String
 
-		prs = ((c[TYPE_KEY] as! String)=="PRS")
+		_table = table
+		_statusLabel = statusLabel
+		super.awakeWithContext(context)
 
-		setTitle(PullRequestSection.watchMenuTitles[sectionIndex])
+		setTitle(section.watchMenuName())
 	}
 
-	override func willActivate() {
-		super.willActivate()
-		buildUI()
-		atNextEvent() { [weak self] in
-			if let i = self!.selectedIndex {
-				self!.table.scrollToRowAtIndex(i)
-				self!.selectedIndex = nil
+	override func requestData(command: String?) {
+		var params = ["list": "item_list", "type": type, "sectionIndex": NSNumber(integer: section.rawValue)]
+		if let command = command {
+			params["command"] = command
+		}
+		sendRequest(params)
+	}
+
+	override func updateFromData(response: [NSString : AnyObject]) {
+
+		let result = response["result"] as! [[String : AnyObject]]
+
+		if lastCount == 0 {
+			table.setNumberOfRows(result.count, withRowType: "PRRow")
+		} else if lastCount < result.count {
+			table.removeRowsAtIndexes(NSIndexSet(indexesInRange: NSMakeRange(0, result.count-lastCount)))
+		} else if lastCount > result.count {
+			table.insertRowsAtIndexes(NSIndexSet(indexesInRange: NSMakeRange(0, lastCount-result.count)), withRowType: "PRRow")
+		}
+
+		lastCount = result.count
+
+		var index = 0
+		for itemData in result {
+			if let c = table.rowControllerAtIndex(index++) as? PRRow {
+				c.populateFrom(itemData)
 			}
+		}
+
+		if result.count == 0 {
+			showStatus("There are no items in this section", hideTable: true)
+		} else {
+			showStatus("", hideTable: false)
+		}
+
+		if let s = selectedIndex {
+			table.scrollToRowAtIndex(s)
+			selectedIndex = nil
 		}
 	}
 
 	@IBAction func markAllReadSelected() {
-		if prs==true {
-			presentControllerWithName("Command Controller", context: ["command": "markAllPrsRead", "sectionIndex": sectionIndex!])
+		showStatus("Marking items as read", hideTable: true)
+		if type=="prs" {
+			requestData("markAllPrsRead")
 		} else {
-			presentControllerWithName("Command Controller", context: ["command": "markAllIssuesRead", "sectionIndex": sectionIndex!])
+			requestData("markAllIssuesRead")
 		}
 	}
 
 	@IBAction func refreshSelected() {
-		presentControllerWithName("Command Controller", context: ["command": "refresh"])
+		showStatus("Refreshing", hideTable: true)
+		requestData("refresh")
 	}
 
 	override func table(table: WKInterfaceTable, didSelectRowAtIndex rowIndex: Int) {
 		selectedIndex = rowIndex
-		if prs==true {
-			pushControllerWithName("DetailController", context: [ PULL_REQUEST_KEY: itemsInSection[rowIndex] ])
-		} else {
-			pushControllerWithName("DetailController", context: [ ISSUE_KEY: itemsInSection[rowIndex] ])
-		}
-	}
-
-	private func buildUI() {
-
-		if prs==true {
-			let f = ListableItem.requestForItemsOfType("PullRequest", withFilter: nil, sectionIndex: sectionIndex)
-			itemsInSection = mainObjectContext.executeFetchRequest(f, error: nil) as! [PullRequest]
-		} else {
-			let f = ListableItem.requestForItemsOfType("Issue", withFilter: nil, sectionIndex: sectionIndex)
-			itemsInSection = mainObjectContext.executeFetchRequest(f, error: nil) as! [Issue]
-		}
-
-		table.setNumberOfRows(itemsInSection.count, withRowType: "PRRow")
-
-		if itemsInSection.count==0 {
-			table.setHidden(true)
-			emptyLabel.setHidden(false)
-		} else {
-			table.setHidden(false)
-			emptyLabel.setHidden(true)
-
-			var index = 0
-			for item in itemsInSection {
-				let controller = table.rowControllerAtIndex(index++) as! PRRow
-				if prs==true {
-					controller.setPullRequest(item as! PullRequest)
-				} else {
-					controller.setIssue(item as! Issue)
-				}
-			}
-		}
+		let row = table.rowControllerAtIndex(rowIndex) as! PRRow
+		let key = (type=="prs" ? PULL_REQUEST_KEY : ISSUE_KEY)
+		pushControllerWithName("DetailController", context: [ key: row.itemId! ])
 	}
 }

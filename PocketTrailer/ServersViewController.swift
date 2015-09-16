@@ -6,7 +6,7 @@ final class ServersViewController: UITableViewController {
 
 	private var selectedServerId: NSManagedObjectID?
 	private var allServers: [ApiServer]!
-	private var resetFormatter: NSDateFormatter
+	private var resetFormatter: NSDateFormatter!
 
 	@IBAction func doneSelected() {
 		if app.preferencesDirty {
@@ -15,22 +15,22 @@ final class ServersViewController: UITableViewController {
 		dismissViewControllerAnimated(true, completion: nil)
 	}
 
-	required init(coder aDecoder: NSCoder) {
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		
 		resetFormatter = NSDateFormatter()
 		resetFormatter.doesRelativeDateFormatting = true
 		resetFormatter.timeStyle = NSDateFormatterStyle.ShortStyle
 		resetFormatter.dateStyle = NSDateFormatterStyle.ShortStyle
-		super.init(coder: aDecoder)
-	}
 
-	override func viewDidLoad() {
-		super.viewDidLoad()
 		clearsSelectionOnViewWillAppear = true
 		NSNotificationCenter.defaultCenter().addObserver(tableView, selector: Selector("reloadData"), name: REFRESH_ENDED_NOTIFICATION, object: nil)
 	}
 
 	deinit {
-		NSNotificationCenter.defaultCenter().removeObserver(tableView)
+		if tableView != nil {
+			NSNotificationCenter.defaultCenter().removeObserver(tableView)
+		}
 	}
 
 	override func viewWillAppear(animated: Bool) {
@@ -48,7 +48,7 @@ final class ServersViewController: UITableViewController {
 	}
 
 	override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-		let cell = tableView.dequeueReusableCellWithIdentifier("ServerCell", forIndexPath: indexPath) as! UITableViewCell
+		let cell = tableView.dequeueReusableCellWithIdentifier("ServerCell", forIndexPath: indexPath) 
 		let a = allServers[indexPath.row]
 		if (a.authToken ?? "").isEmpty {
 			cell.textLabel?.textColor = UIColor.redColor()

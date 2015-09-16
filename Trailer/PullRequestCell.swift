@@ -40,7 +40,7 @@ final class PullRequestCell: TrailerCell {
 		let paragraphStyle = NSMutableParagraphStyle()
 		paragraphStyle.headIndent = 92.0
 
-		var statusAttributes = [NSObject:AnyObject]()
+		var statusAttributes = [String : AnyObject]()
 		statusAttributes[NSFontAttributeName] = NSFont(name: "Monaco", size: 9)
 		statusAttributes[NSParagraphStyleAttributeName] = paragraphStyle
 
@@ -89,7 +89,7 @@ final class PullRequestCell: TrailerCell {
 				let unmergeableLabel = CenterTextField(frame: pinRect)
 				unmergeableLabel.textColor = NSColor.redColor()
 				unmergeableLabel.font = NSFont(name: "Monaco", size: 8.0)
-				unmergeableLabel.alignment = NSTextAlignment.CenterTextAlignment
+				unmergeableLabel.alignment = NSTextAlignment.Center
 				unmergeableLabel.stringValue = "Cannot be merged"
 				addSubview(unmergeableLabel)
 			}
@@ -128,7 +128,11 @@ final class PullRequestCell: TrailerCell {
 			}
 		}
 
-        addMenuWithTitle("PR Options")
+		if let n = pullRequest.number {
+			addMenuWithTitle("PR #\(n)")
+		} else {
+			addMenuWithTitle("PR Options")
+		}
 	}
 
 	required init?(coder: NSCoder) {

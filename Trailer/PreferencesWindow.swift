@@ -83,6 +83,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 	// Misc
 	@IBOutlet weak var repeatLastExportAutomatically: NSButton!
 	@IBOutlet weak var lastExportReport: NSTextField!
+	@IBOutlet weak var dumpApiResponsesToConsole: NSButton!
 
 	// Keyboard
 	@IBOutlet weak var hotkeyEnable: NSButton!
@@ -103,19 +104,15 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 	// Tabs
 	@IBOutlet weak var tabs: NSTabView!
 
-	override init(contentRect: NSRect, styleMask aStyle: Int, backing bufferingType: NSBackingStoreType, defer flag: Bool) {
-		super.init(contentRect: contentRect, styleMask: aStyle, backing: bufferingType, defer: flag)
+	override init(contentRect: NSRect, styleMask aStyle: Int, backing bufferingType: NSBackingStoreType, `defer` flag: Bool) {
+		super.init(contentRect: contentRect, styleMask: aStyle, backing: bufferingType, `defer`: flag)
 	}
 
 	override func awakeFromNib() {
 		super.awakeFromNib()
 		delegate = self
 
-		allPrsSetting.addItemWithTitle("Set all PRs...")
-		allPrsSetting.addItemsWithTitles(RepoDisplayPolicy.labels)
-
-		allIssuesSetting.addItemWithTitle("Set all issues...")
-		allIssuesSetting.addItemsWithTitles(RepoDisplayPolicy.labels)
+		updateAllItemSettingButtons()
 
 		allNewPrsSetting.addItemsWithTitles(RepoDisplayPolicy.labels)
 		allNewIssuesSetting.addItemsWithTitles(RepoDisplayPolicy.labels)
@@ -135,6 +132,24 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 	deinit {
 		NSNotificationCenter.defaultCenter().removeObserver(serverList)
 		NSNotificationCenter.defaultCenter().removeObserver(self)
+	}
+
+	private func updateAllItemSettingButtons() {
+
+		allPrsSetting.removeAllItems()
+		allIssuesSetting.removeAllItems()
+
+		let rowCount = projectsTable.selectedRowIndexes.count
+		if rowCount > 1 {
+			allPrsSetting.addItemWithTitle("Set selected PRs...")
+			allIssuesSetting.addItemWithTitle("Set selected issues...")
+		} else {
+			allPrsSetting.addItemWithTitle("Set all PRs...")
+			allIssuesSetting.addItemWithTitle("Set all issues...")
+		}
+
+		allPrsSetting.addItemsWithTitles(RepoDisplayPolicy.labels)
+		allIssuesSetting.addItemsWithTitles(RepoDisplayPolicy.labels)
 	}
 
 	func reloadSettings() {
@@ -181,6 +196,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 		countOnlyListedItems.integerValue = Settings.countOnlyListedItems ? 0 : 1
 		openPrAtFirstUnreadComment.integerValue = Settings.openPrAtFirstUnreadComment ? 1 : 0
 		logActivityToConsole.integerValue = Settings.logActivityToConsole ? 1 : 0
+		dumpApiResponsesToConsole.integerValue = Settings.dumpAPIResponsesInConsole ? 1 : 0
 		showLabels.integerValue = Settings.showLabels ? 1 : 0
 		useVibrancy.integerValue = Settings.useVibrancy ? 1 : 0
 
@@ -276,8 +292,19 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 			#if DEBUG
 				alert.informativeText = "Sorry, logging is always active in development versions"
 				#else
-				alert.informativeText = "Logging is a feature meant for error reporting, having it constantly enabled will cause this app to be less responsive and use more power"
+				alert.informativeText = "Logging is a feature meant for error reporting, having it constantly enabled will cause this app to be less responsive, use more power, and constitute a security risk"
 			#endif
+			alert.addButtonWithTitle("OK")
+			alert.beginSheetModalForWindow(self, completionHandler: nil)
+		}
+	}
+
+	@IBAction func dumpApiResponsesToConsoleSelected(sender: NSButton) {
+		Settings.dumpAPIResponsesInConsole = (sender.integerValue==1)
+		if Settings.dumpAPIResponsesInConsole {
+			let alert = NSAlert()
+			alert.messageText = "Warning"
+			alert.informativeText = "This is a feature meant for error reporting, having it constantly enabled will cause this app to be less responsive, use more power, and constitute a security risk"
 			alert.addButtonWithTitle("OK")
 			alert.beginSheetModalForWindow(self, completionHandler: nil)
 		}
@@ -355,11 +382,26 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 		app.deferredUpdateTimer.push()
 	}
 
+	private func affectedReposFromSelection() -> [Repo] {
+		let selectedRows = projectsTable.selectedRowIndexes
+		var affectedRepos = [Repo]()
+		if selectedRows.count > 1 {
+			for row in selectedRows {
+				if !tableView(projectsTable, isGroupRow: row) {
+					affectedRepos.append(repoForRow(row))
+				}
+			}
+		} else {
+			affectedRepos = Repo.reposForFilter(repoFilter.stringValue)
+		}
+		return affectedRepos
+	}
+
 	@IBAction func allPrsPolicySelected(sender: NSPopUpButton) {
 		let index = sender.indexOfSelectedItem - 1
 		if index < 0 { return }
 
-		for r in Repo.reposForFilter(repoFilter.stringValue) {
+		for r in affectedReposFromSelection() {
 			r.displayPolicyForPrs = index
 			if index != RepoDisplayPolicy.Hide.rawValue { r.resetSyncState() }
 		}
@@ -372,7 +414,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 		let index = sender.indexOfSelectedItem - 1
 		if index < 0 { return }
 
-		for r in Repo.reposForFilter(repoFilter.stringValue) {
+		for r in affectedReposFromSelection() {
 			r.displayPolicyForIssues = index
 			if index != RepoDisplayPolicy.Hide.rawValue { r.resetSyncState() }
 		}
@@ -557,7 +599,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 					}
 				}
 
-				let serverNames = ", ".join(errorServers)
+				let serverNames = errorServers.joinWithSeparator(", ")
 
 				let alert = NSAlert()
 				alert.messageText = "Error"
@@ -565,7 +607,10 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 				alert.addButtonWithTitle("OK")
 				alert.runModal()
 			} else {
-				tempContext.save(nil)
+				do {
+					try tempContext.save()
+				} catch _ {
+				}
 			}
 			app.completeRefresh()
 		}
@@ -580,7 +625,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 	}
 
 	@IBAction func deleteSelectedServerSelected(sender: NSButton) {
-		if let selectedServer = selectedServer(), index = indexOfObject(ApiServer.allApiServersInMoc(mainObjectContext), selectedServer) {
+		if let selectedServer = selectedServer(), index = indexOfObject(ApiServer.allApiServersInMoc(mainObjectContext), value: selectedServer) {
 			mainObjectContext.deleteObject(selectedServer)
 			serverList.reloadData()
 			serverList.selectRowIndexes(NSIndexSet(index: min(index, serverList.numberOfRows-1)), byExtendingSelection: false)
@@ -599,7 +644,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 
 	func updateImportExportSettings() {
 		repeatLastExportAutomatically.integerValue = Settings.autoRepeatSettingsExport ? 1 : 0
-		if let lastExportDate = Settings.lastExportDate, fileName = Settings.lastExportUrl?.absoluteString, unescapedName = fileName.stringByReplacingPercentEscapesUsingEncoding(NSUTF8StringEncoding) {
+		if let lastExportDate = Settings.lastExportDate, fileName = Settings.lastExportUrl?.absoluteString, unescapedName = fileName.stringByRemovingPercentEncoding {
 			let time = itemDateFormatter.stringFromDate(lastExportDate)
 			lastExportReport.stringValue = "Last exported \(time) to \(unescapedName)"
 		} else {
@@ -623,7 +668,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 		s.beginSheetModalForWindow(self, completionHandler: { response in
 			if response == NSFileHandlingPanelOKButton, let url = s.URL {
 				Settings.writeToURL(url)
-				DLog("Exported settings to %@", url.absoluteString!)
+				DLog("Exported settings to %@", url.absoluteString)
 			}
 			})
 	}
@@ -791,7 +836,7 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 		let a = ApiServer.insertNewServerInMoc(mainObjectContext)
 		a.label = "New API Server"
 		serverList.reloadData()
-		if let index = indexOfObject(ApiServer.allApiServersInMoc(mainObjectContext), a) {
+		if let index = indexOfObject(ApiServer.allApiServersInMoc(mainObjectContext), value: a) {
 			serverList.selectRowIndexes(NSIndexSet(index: index), byExtendingSelection: false)
 			fillServerApiFormFromSelectedServer()
 		}
@@ -882,7 +927,11 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 	///////////// Repo table
 
 	func tableViewSelectionDidChange(notification: NSNotification) {
-		fillServerApiFormFromSelectedServer()
+		if self.serverList === notification.object {
+			fillServerApiFormFromSelectedServer()
+		} else if self.projectsTable === notification.object {
+			updateAllItemSettingButtons()
+		}
 	}
 
 	private func repoForRow(row: Int) -> Repo {
@@ -928,12 +977,11 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 
 						var count = 0
 						let fontSize = NSFont.systemFontSizeForControlSize(NSControlSize.SmallControlSize)
-						for label in RepoDisplayPolicy.labels {
+						for policy in RepoDisplayPolicy.policies {
 							let m = NSMenuItem()
-							let textColor = (row == tv.selectedRow) ? NSColor.selectedControlTextColor() : (count==0 ? NSColor.textColor().colorWithAlphaComponent(0.4) : NSColor.textColor())
-							m.attributedTitle = NSAttributedString(string: label, attributes: [
+							m.attributedTitle = NSAttributedString(string: policy.name(), attributes: [
 								NSFontAttributeName: count==0 ? NSFont.systemFontOfSize(fontSize) : NSFont.boldSystemFontOfSize(fontSize),
-								NSForegroundColorAttributeName: textColor,
+								NSForegroundColorAttributeName: policy.color(),
 								])
 							menuCell.menu?.addItem(m)
 							count++
@@ -951,6 +999,12 @@ final class PreferencesWindow : NSWindow, NSWindowDelegate, NSTableViewDelegate,
 			let apiServer = allServers[row]
 			if tableColumn?.identifier == "server" {
 				cell.title = apiServer.label ?? "NoApiServer"
+				let tc = c as! NSTextFieldCell
+				if apiServer.lastSyncSucceeded?.boolValue ?? false {
+					tc.textColor = NSColor.textColor()
+				} else {
+					tc.textColor = NSColor.redColor()
+				}
 			} else { // api usage
 				let c = cell as! NSLevelIndicatorCell
 				c.minValue = 0

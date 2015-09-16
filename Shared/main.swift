@@ -1,4 +1,6 @@
 
+// OSX and iOS app init
+
 Settings.checkMigration()
 DataManager.checkMigration()
 let api = API()

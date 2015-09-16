@@ -6,7 +6,7 @@ final class AvatarView: NSImageView {
 	init(frame frameRect: NSRect, url: String) {
 		super.init(frame: frameRect)
 		imageAlignment = NSImageAlignment.AlignCenter
-		if (!api.haveCachedAvatar(url) { [weak self] img in
+		if (!api.haveCachedAvatar(url) { [weak self] img, _ in
 			if let weakSelf = self {
 				weakSelf.image = img
 				weakSelf.done()
@@ -28,7 +28,7 @@ final class AvatarView: NSImageView {
 	}
 
 	func startSpinner() {
-		var s = NSProgressIndicator(frame: CGRectInset(bounds, 6.0, 6.0))
+		let s = NSProgressIndicator(frame: CGRectInset(bounds, 6.0, 6.0))
 		s.style = NSProgressIndicatorStyle.SpinningStyle
 		addSubview(s)
 		s.startAnimation(self)

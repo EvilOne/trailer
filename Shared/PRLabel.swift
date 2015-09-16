@@ -22,7 +22,7 @@ final class PRLabel: DataItem {
 		} else {
 			f.predicate = NSPredicate(format: "name == %@ and issue == %@", name, withParent)
 		}
-		let res = withParent.managedObjectContext?.executeFetchRequest(f, error: nil) as! [PRLabel]
+		let res = try! withParent.managedObjectContext?.executeFetchRequest(f) as! [PRLabel]
 		return res.first
 	}
 
@@ -56,14 +56,8 @@ final class PRLabel: DataItem {
 	}
 
 	func colorForDisplay() -> COLOR_CLASS {
-		if let c = color?.unsignedLongLongValue {
-			let red: UInt64 = (c & 0xFF0000)>>16
-			let green: UInt64 = (c & 0x00FF00)>>8
-			let blue: UInt64 = c & 0x0000FF
-			let r = CGFloat(red)/255.0
-			let g = CGFloat(green)/255.0
-			let b = CGFloat(blue)/255.0
-			return COLOR_CLASS(red: r, green: g, blue: b, alpha: 1.0)
+		if let c = color?.unsignedIntValue {
+			return colorFromUInt32(c)
 		} else {
 			return COLOR_CLASS.blackColor()
 		}

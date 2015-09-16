@@ -2,75 +2,49 @@
 import UIKit
 import CoreData
 
-final class MasterViewController: UITableViewController, NSFetchedResultsControllerDelegate, UITextFieldDelegate, UIActionSheetDelegate, UITabBarControllerDelegate, UITabBarDelegate {
+final class MasterViewController: UITableViewController, NSFetchedResultsControllerDelegate, UITextFieldDelegate, UITabBarControllerDelegate, UITabBarDelegate {
 
 	private var detailViewController: DetailViewController!
 	private var _fetchedResultsController: NSFetchedResultsController?
 
 	// Filtering
-	private let searchField: UITextField
-	private var searchTimer: PopTimer?
+	private var searchField: UITextField!
+	private var searchTimer: PopTimer!
 
 	// Refreshing
-	private var refreshOnRelease: Bool
+	private var refreshOnRelease: Bool = false
 
 	private let pullRequestsItem = UITabBarItem()
 	private let issuesItem = UITabBarItem()
 	private var tabBar: UITabBar?
 
 	@IBAction func editSelected(sender: UIBarButtonItem ) {
-		if traitCollection.userInterfaceIdiom==UIUserInterfaceIdiom.Pad && UIInterfaceOrientationIsPortrait(UIApplication.sharedApplication().statusBarOrientation) {
-			let a = UIAlertController(title: "Action", message: nil, preferredStyle: UIAlertControllerStyle.Alert)
 
-			a.addAction(UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Cancel, handler: { action in
-				a.dismissViewControllerAnimated(true, completion: nil)
+		let a = UIAlertController(title: "Action", message: nil, preferredStyle: UIAlertControllerStyle.Alert)
+
+		a.addAction(UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Cancel, handler: { action in
+			a.dismissViewControllerAnimated(true, completion: nil)
+		}))
+		a.addAction(UIAlertAction(title: "Mark all as read", style: UIAlertActionStyle.Destructive, handler: { [weak self] action in
+			self!.markAllAsRead()
 			}))
-			a.addAction(UIAlertAction(title: "Mark all as read", style: UIAlertActionStyle.Destructive, handler: { [weak self] action in
-				self!.markAllAsRead()
-				}))
-			a.addAction(UIAlertAction(title: "Remove merged", style:UIAlertActionStyle.Default, handler: { [weak self] action in
-				self!.removeAllMerged()
-				}))
-			a.addAction(UIAlertAction(title: "Remove closed", style:UIAlertActionStyle.Default, handler: { [weak self] action in
-				self!.removeAllClosed()
-				}))
-			a.addAction(UIAlertAction(title: "Refresh Now", style:UIAlertActionStyle.Default, handler: { action in
-				app.startRefresh()
+		a.addAction(UIAlertAction(title: "Remove merged", style:UIAlertActionStyle.Default, handler: { [weak self] action in
+			self!.removeAllMerged()
 			}))
-			presentViewController(a, animated: true, completion: nil)
-		}
-		else
-		{
-			let a = UIActionSheet(title: "Action",
-				delegate:self,
-				cancelButtonTitle: "Cancel",
-				destructiveButtonTitle: "Mark all as read",
-				otherButtonTitles: "Remove merged",  "Remove closed", "Refresh Now")
-
-			a.showFromBarButtonItem(sender, animated: true)
-		}
-	}
-
-	func actionSheet(actionSheet: UIActionSheet, willDismissWithButtonIndex buttonIndex: Int) {
-		switch buttonIndex {
-		case 0:
-			markAllAsRead()
-		case 2:
-			removeAllMerged()
-		case 3:
-			removeAllClosed()
-		case 4:
+		a.addAction(UIAlertAction(title: "Remove closed", style:UIAlertActionStyle.Default, handler: { [weak self] action in
+			self!.removeAllClosed()
+			}))
+		a.addAction(UIAlertAction(title: "Refresh Now", style:UIAlertActionStyle.Default, handler: { action in
 			app.startRefresh()
-		default:
-			break
-		}
+		}))
+		presentViewController(a, animated: true, completion: nil)
 	}
 
 	private func tryRefresh() {
 		refreshOnRelease = false
 
-		if api.currentNetworkStatus == NetworkStatus.NotReachable {
-			UIAlertView(title: "No Network", message: "There is no network connectivity, please try again later", delegate: nil, cancelButtonTitle: "OK").show()
+		if api.noNetworkConnection() {
+			showMessage("No Network", "There is no network connectivity, please try again later")
 		} else {
 			if !app.startRefresh() {
 				updateStatus()
@@ -160,10 +134,18 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		}
 	}
 
-	required init(coder aDecoder: NSCoder) {
+	override func viewDidLoad() {
+		super.viewDidLoad()
+
+		searchTimer = PopTimer(timeInterval: 0.5) { [weak self] in
+			self!.reloadDataWithAnimation(true)
+		}
+
+		refreshControl?.addTarget(self, action: Selector("refreshControlChanged"), forControlEvents: UIControlEvents.ValueChanged)
+
 		searchField = UITextField(frame: CGRectMake(10, 10, 300, 31))
 		searchField.autoresizingMask = UIViewAutoresizing.FlexibleWidth
-		searchField.setTranslatesAutoresizingMaskIntoConstraints(true)
+		searchField.translatesAutoresizingMaskIntoConstraints = true
 		searchField.placeholder = "Filter..."
 		searchField.returnKeyType = UIReturnKeyType.Done
 		searchField.font = UIFont.systemFontOfSize(17)
@@ -172,37 +154,22 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		searchField.clearButtonMode = UITextFieldViewMode.Always
 		searchField.autocapitalizationType = UITextAutocapitalizationType.None
 		searchField.autocorrectionType = UITextAutocorrectionType.No
-
-		refreshOnRelease = false
-
-		super.init(coder: aDecoder)
-
-		searchTimer = PopTimer(timeInterval: 0.5) { [weak self] in
-			self!.reloadDataWithAnimation(true)
-		}
-	}
-
-	override func viewDidLoad() {
-		super.viewDidLoad()
-
-		refreshControl?.addTarget(self, action: Selector("refreshControlChanged"), forControlEvents: UIControlEvents.ValueChanged)
-
 		searchField.delegate = self
 
 		let searchHolder = UIView(frame: CGRectMake(0, 0, 320, 41))
 		searchHolder.addSubview(searchField)
 		tableView.tableHeaderView = searchHolder
 		tableView.contentOffset = CGPointMake(0, searchHolder.frame.size.height)
-		tableView.estimatedRowHeight = 110
 		tableView.rowHeight = UITableViewAutomaticDimension
 
-		detailViewController = splitViewController?.viewControllers.last?.topViewController as! DetailViewController
+		if let detailNav = splitViewController?.viewControllers.last as? UINavigationController {
+			detailViewController = detailNav.topViewController as? DetailViewController
+		}
 
 		let n = NSNotificationCenter.defaultCenter()
 
 		n.addObserver(self, selector: Selector("updateStatus"), name:REFRESH_STARTED_NOTIFICATION, object: nil)
 		n.addObserver(self, selector: Selector("updateStatus"), name:REFRESH_ENDED_NOTIFICATION, object: nil)
-		n.addObserver(self, selector: Selector("localNotification:"), name:RECEIVED_NOTIFICATION_KEY, object: nil)
 
 		pullRequestsItem.title = "Pull Requests"
 		pullRequestsItem.image = UIImage(named: "prsTab")
@@ -210,8 +177,13 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		issuesItem.image = UIImage(named: "issuesTab")
 	}
 
-	func tabBar(tabBar: UITabBar, didSelectItem item: UITabBarItem!) {
-		viewMode = indexOfObject(tabBar.items!, item)==0 ? MasterViewMode.PullRequests : MasterViewMode.Issues
+	func tabBar(tabBar: UITabBar, didSelectItem item: UITabBarItem) {
+		viewMode = indexOfObject(tabBar.items!, value: item)==0 ? MasterViewMode.PullRequests : MasterViewMode.Issues
+	}
+
+	override func viewDidLayoutSubviews() {
+		super.viewDidLayoutSubviews()
+		tableView.tableHeaderView?.frame = CGRectMake(0, 0, tableView.bounds.size.width, 41)
 	}
 
 	override func viewWillAppear(animated: Bool) {
@@ -221,6 +193,8 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	}
 
 	func reloadDataWithAnimation(animated: Bool) {
+
+		heightCache.removeAll()
 
 		if !Repo.interestedInIssues() && Repo.interestedInPrs() && viewMode == MasterViewMode.Issues {
 			showTabBar(false, animated: animated)
@@ -276,15 +250,15 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
     }
 
 	private func showTabBar(show: Bool, animated: Bool) {
-		if show==true {
+		if show {
 
 			tableView.contentInset = UIEdgeInsetsMake(tableView.contentInset.top, 0, 49, 0)
-			tableView.scrollIndicatorInsets = UIEdgeInsetsMake(tableView.contentInset.top, 0, 49, 0)
+			tableView.scrollIndicatorInsets = UIEdgeInsetsMake(tableView.scrollIndicatorInsets.top, 0, 49, 0)
 
 			if tabBar == nil {
 				if let s = navigationController?.view {
 					let t = UITabBar(frame: CGRectMake(0, s.bounds.size.height-49, s.bounds.size.width, 49))
-					t.autoresizingMask = UIViewAutoresizing.FlexibleTopMargin | UIViewAutoresizing.FlexibleBottomMargin | UIViewAutoresizing.FlexibleWidth
+					t.autoresizingMask = UIViewAutoresizing.FlexibleTopMargin.union(UIViewAutoresizing.FlexibleBottomMargin).union(UIViewAutoresizing.FlexibleWidth)
 					t.items = [pullRequestsItem, issuesItem]
 					t.selectedItem = viewMode==MasterViewMode.PullRequests ? pullRequestsItem : issuesItem
 					t.delegate = self
@@ -307,7 +281,7 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 
 			if !(Repo.interestedInPrs() && Repo.interestedInIssues()) {
 				tableView.contentInset = UIEdgeInsetsMake(tableView.contentInset.top, 0, 0, 0)
-				tableView.scrollIndicatorInsets = UIEdgeInsetsMake(tableView.contentInset.top, 0, 0, 0)
+				tableView.scrollIndicatorInsets = UIEdgeInsetsMake(tableView.scrollIndicatorInsets.top, 0, 0, 0)
 			}
 
 			if let t = tabBar {
@@ -329,26 +303,26 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		}
 	}
 
-	func localNotification(notification: NSNotification) {
-		var urlToOpen = notification.userInfo?[NOTIFICATION_URL_KEY] as? String
+	func localNotification(userInfo: [NSObject : AnyObject]) {
+		var urlToOpen = userInfo[NOTIFICATION_URL_KEY] as? String
 		var relatedItem: ListableItem?
 
-		if let commentId = DataManager.idForUriPath(notification.userInfo?[COMMENT_ID_KEY] as? String), c = mainObjectContext.existingObjectWithID(commentId, error:nil) as? PRComment {
+		if let commentId = DataManager.idForUriPath(userInfo[COMMENT_ID_KEY] as? String), c = existingObjectWithID(commentId) as? PRComment {
 				relatedItem = c.pullRequest ?? c.issue
 				if urlToOpen == nil {
 					urlToOpen = c.webUrl
 				}
-		} else if let pullRequestId = DataManager.idForUriPath(notification.userInfo?[PULL_REQUEST_ID_KEY] as? String) {
-			relatedItem = mainObjectContext.existingObjectWithID(pullRequestId, error:nil) as? ListableItem
+		} else if let pullRequestId = DataManager.idForUriPath(userInfo[PULL_REQUEST_ID_KEY] as? String) {
+			relatedItem = existingObjectWithID(pullRequestId) as? ListableItem
 			if relatedItem == nil {
-				UIAlertView(title: "PR not found", message: "Could not locale the PR related to this notification", delegate: nil, cancelButtonTitle: "OK").show()
+				showMessage("PR not found", "Could not locale the PR related to this notification")
 			} else if urlToOpen == nil {
 				urlToOpen = relatedItem!.webUrl
 			}
-		} else if let issueId = DataManager.idForUriPath(notification.userInfo?[ISSUE_ID_KEY] as? String) {
-			relatedItem = mainObjectContext.existingObjectWithID(issueId, error:nil) as? ListableItem
+		} else if let issueId = DataManager.idForUriPath(userInfo[ISSUE_ID_KEY] as? String) {
+			relatedItem = existingObjectWithID(issueId) as? ListableItem
 			if relatedItem == nil {
-				UIAlertView(title: "Issue not found", message: "Could not locale the issue related to this notification", delegate: nil, cancelButtonTitle: "OK").show()
+				showMessage("Issue not found", "Could not locale the issue related to this notification")
 			} else if urlToOpen == nil {
 				urlToOpen = relatedItem!.webUrl
 			}
@@ -387,7 +361,7 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		viewMode = MasterViewMode.PullRequests
 		if let
 			pullRequestId = DataManager.idForUriPath(prId),
-			pr = mainObjectContext.existingObjectWithID(pullRequestId, error:nil) as? PullRequest,
+			pr = existingObjectWithID(pullRequestId) as? PullRequest,
 			ip = fetchedResultsController.indexPathForObject(pr)
 		{
 			pr.catchUpWithComments()
@@ -400,7 +374,7 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		viewMode = MasterViewMode.Issues
 		if let
 			issueId = DataManager.idForUriPath(iId),
-			issue = mainObjectContext.existingObjectWithID(issueId, error:nil) as? Issue,
+			issue = existingObjectWithID(issueId) as? Issue,
 			ip = fetchedResultsController.indexPathForObject(issue)
 		{
 			issue.catchUpWithComments()
@@ -412,7 +386,7 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	func openCommentWithId(cId: String) {
 		if let
 			itemId = DataManager.idForUriPath(cId),
-			comment = mainObjectContext.existingObjectWithID(itemId, error:nil) as? PRComment
+			comment = existingObjectWithID(itemId) as? PRComment
 		{
 			if let url = comment.webUrl {
 				var ip: NSIndexPath?
@@ -448,47 +422,75 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	}
 
 	override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-		let sectionInfo = fetchedResultsController.sections?[section] as? NSFetchedResultsSectionInfo
-		return sectionInfo?.numberOfObjects ?? 0
+		return fetchedResultsController.sections?[section].numberOfObjects ?? 0
 	}
 
 	override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-		let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath) as! UITableViewCell
+		let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath)
 		configureCell(cell, atIndexPath: indexPath)
 		return cell
 	}
 
-	override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
-		if let
-			p = fetchedResultsController.objectAtIndexPath(indexPath) as? PullRequest,
-			u = p.urlForOpening()
-			where viewMode == MasterViewMode.PullRequests
-		{
-			detailViewController.detailItem = NSURL(string: u)
-			detailViewController.catchupWithDataItemWhenLoaded = p.objectID
-		} else if let
-			i = fetchedResultsController.objectAtIndexPath(indexPath) as? Issue,
-			u = i.urlForOpening()
-			where viewMode == MasterViewMode.Issues
-		{
-			detailViewController.detailItem = NSURL(string: u)
-			detailViewController.catchupWithDataItemWhenLoaded = i.objectID
+	private var sizer: PRCell?
+	private var heightCache = [NSIndexPath : CGFloat]()
+	override func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
+		if sizer == nil {
+			sizer = tableView.dequeueReusableCellWithIdentifier("Cell") as? PRCell
+			sizer?.forDisplay = false
+		} else if let h = heightCache[indexPath] {
+			//DLog("using cached height for %d - %d", indexPath.section, indexPath.row)
+			return h
 		}
+		configureCell(sizer!, atIndexPath: indexPath)
+		let h = sizer!.systemLayoutSizeFittingSize(CGSizeMake(tableView.bounds.width, UILayoutFittingCompressedSize.height),
+			withHorizontalFittingPriority: UILayoutPriorityRequired,
+			verticalFittingPriority: UILayoutPriorityFittingSizeLevel).height
+		heightCache[indexPath] = h
+		return h
+	}
 
-		if !detailViewController.isVisible {
-			showTabBar(false, animated: true)
-			showDetailViewController(detailViewController.navigationController!, sender: self)
+	override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+		if viewMode == MasterViewMode.PullRequests, let
+			p = fetchedResultsController.objectAtIndexPath(indexPath) as? PullRequest,
+			u = p.urlForOpening(),
+			url = NSURL(string: u)
+		{
+			if openItem(p, url: url, oid: p.objectID) {
+				tableView.deselectRowAtIndexPath(indexPath, animated: true)
+			}
+		} else if viewMode == MasterViewMode.Issues, let
+			i = fetchedResultsController.objectAtIndexPath(indexPath) as? Issue,
+			u = i.urlForOpening(),
+			url = NSURL(string: u)
+		{
+			if openItem(i, url: url, oid: i.objectID) {
+				tableView.deselectRowAtIndexPath(indexPath, animated: true)
+			}
+		}
+	}
+
+	private func openItem(item: ListableItem, url: NSURL, oid: NSManagedObjectID) -> Bool {
+		if Settings.openItemsDirectlyInSafari && !detailViewController.isVisible {
+			item.catchUpWithComments()
+			UIApplication.sharedApplication().openURL(url)
+			return true
+		} else {
+			detailViewController.detailItem = url
+			detailViewController.catchupWithDataItemWhenLoaded = oid
+			if !detailViewController.isVisible {
+				showTabBar(false, animated: true)
+				showDetailViewController(detailViewController.navigationController!, sender: self)
+			}
+			return false
 		}
 	}
 
 	override func tableView(tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-		let sectionInfo = fetchedResultsController.sections?[section] as? NSFetchedResultsSectionInfo
-		return sectionInfo?.name ?? "Unknown Section"
+		return fetchedResultsController.sections?[section].name ?? "Unknown Section"
 	}
 
 	override func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-		if let sectionInfo = fetchedResultsController.sections?[indexPath.section] as? NSFetchedResultsSectionInfo {
-			let sectionName = sectionInfo.name
+		if let sectionName = fetchedResultsController.sections?[indexPath.section].name {
 			return sectionName == PullRequestSection.Merged.prMenuName() || sectionName == PullRequestSection.Closed.prMenuName()
 		} else {
 			return false
@@ -524,13 +526,7 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		aFetchedResultsController.delegate = self
 		_fetchedResultsController = aFetchedResultsController
 
-		var error: NSError?
-		if !aFetchedResultsController.performFetch(&error) {
-			if let e = error {
-				DLog( "Fetch request error %@, %@", e, e.userInfo)
-				abort()
-			}
-		}
+		try! aFetchedResultsController.performFetch()
 
 		return aFetchedResultsController
 	}
@@ -540,6 +536,9 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	}
 
 	func controller(controller: NSFetchedResultsController, didChangeSection sectionInfo: NSFetchedResultsSectionInfo, atIndex sectionIndex: Int, forChangeType type: NSFetchedResultsChangeType) {
+
+		heightCache.removeAll()
+
 		switch(type) {
 		case .Insert:
 			tableView.insertSections(NSIndexSet(index: sectionIndex), withRowAnimation: UITableViewRowAnimation.Automatic)
@@ -553,6 +552,8 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	}
 
 	func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {
+
+		heightCache.removeAll()
 
 		switch(type) {
 		case .Insert:
@@ -579,16 +580,15 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	private func configureCell(cell: UITableViewCell, atIndexPath: NSIndexPath) {
 		let c = cell as! PRCell
 
-		c._statuses.preferredMaxLayoutWidth = tableView.bounds.size.width - 20
-		c._title.preferredMaxLayoutWidth = tableView.bounds.size.width - 20
-		c._description.preferredMaxLayoutWidth = tableView.bounds.size.width - 80
+		//c._statuses.preferredMaxLayoutWidth = tableView.bounds.size.width - 20
+		//c._title.preferredMaxLayoutWidth = tableView.bounds.size.width - 20
+		//c._description.preferredMaxLayoutWidth = tableView.bounds.size.width - 80
 
+		let o = fetchedResultsController.objectAtIndexPath(atIndexPath)
 		if viewMode == MasterViewMode.PullRequests {
-			let pr = fetchedResultsController.objectAtIndexPath(atIndexPath) as! PullRequest
-			c.setPullRequest(pr)
+			c.setPullRequest(o as! PullRequest)
 		} else {
-			let i = fetchedResultsController.objectAtIndexPath(atIndexPath) as! Issue
-			c.setIssue(i)
+			c.setIssue(o as! Issue)
 		}
 	}
 
@@ -700,11 +700,20 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 		viewMode = MasterViewMode.Issues
 	}
 
-	var viewMode: MasterViewMode = .PullRequests {
-		didSet {
-			_fetchedResultsController = nil
-			tableView.reloadData()
-			updateStatus()
+	private var _viewMode: MasterViewMode = .PullRequests
+	var viewMode: MasterViewMode {
+		set {
+			if newValue != _viewMode {
+				_viewMode = newValue
+				_fetchedResultsController = nil
+				heightCache.removeAll()
+				tableView.reloadData()
+				tableView.scrollRectToVisible(CGRectMake(0, tableView.tableHeaderView?.frame.size.height ?? tableView.contentInset.top, 1, 1), animated: false)
+				updateStatus()
+			}
+		}
+		get {
+			return _viewMode
 		}
 	}
 
@@ -728,7 +737,7 @@ final class MasterViewController: UITableViewController, NSFetchedResultsControl
 	}
 
 	func tabBarController(tabBarController: UITabBarController, didSelectViewController viewController: UIViewController) {
-		Settings.lastPreferencesTabSelected = indexOfObject(tabBarController.viewControllers!, viewController) ?? 0
+		Settings.lastPreferencesTabSelected = indexOfObject(tabBarController.viewControllers!, value: viewController) ?? 0
 	}
 	
 }

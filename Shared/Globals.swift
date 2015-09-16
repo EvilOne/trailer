@@ -1,4 +1,46 @@
 
+#if os(iOS)
+
+import UIKit
+
+let REFRESH_STARTED_NOTIFICATION = "RefreshStartedNotification"
+let REFRESH_ENDED_NOTIFICATION = "RefreshEndedNotification"
+let GLOBAL_SCREEN_SCALE = UIScreen.mainScreen().scale
+let GLOBAL_TINT = UIColor(red: 52.0/255.0, green: 110.0/255.0, blue: 183.0/255.0, alpha: 1.0)
+
+let stringDrawingOptions: NSStringDrawingOptions = [NSStringDrawingOptions.UsesLineFragmentOrigin, NSStringDrawingOptions.UsesFontLeading]
+typealias COLOR_CLASS = UIColor
+typealias FONT_CLASS = UIFont
+typealias IMAGE_CLASS = UIImage
+
+#elseif os(OSX)
+
+let STATUSITEM_PADDING: CGFloat = 1.0
+let TOP_HEADER_HEIGHT: CGFloat = 28.0
+let AVATAR_SIZE: CGFloat = 26.0
+let LEFTPADDING: CGFloat = 44.0
+let TITLE_HEIGHT: CGFloat = 42.0
+let BASE_BADGE_SIZE: CGFloat = 20.0
+let SMALL_BADGE_SIZE: CGFloat = 14.0
+let MENU_WIDTH: CGFloat = 500.0
+let AVATAR_PADDING: CGFloat = 8.0
+let REMOVE_BUTTON_WIDTH: CGFloat = 80.0
+
+let stringDrawingOptions: NSStringDrawingOptions = [NSStringDrawingOptions.UsesLineFragmentOrigin, NSStringDrawingOptions.UsesFontLeading]
+typealias COLOR_CLASS = NSColor
+typealias FONT_CLASS = NSFont
+typealias IMAGE_CLASS = NSImage
+
+#endif
+
+let itemDateFormatter = { () -> NSDateFormatter in
+	let f = NSDateFormatter()
+	f.doesRelativeDateFormatting = true
+	f.dateStyle = NSDateFormatterStyle.MediumStyle
+	f.timeStyle = NSDateFormatterStyle.ShortStyle
+	return f
+	}()
+
 //////////////////////// Logging: Ugly as hell but works and is fast
 
 func DLog(message: String) {
@@ -7,74 +49,35 @@ func DLog(message: String) {
     }
 }
 
-func DLog(message: String, @autoclosure arg1: ()->CVarArgType?) {
+func DLog(message: String, @autoclosure _ arg1: ()->CVarArgType?) {
     if Settings.logActivityToConsole {
         NSLog(message, arg1() ?? "(nil)")
     }
 }
 
-func DLog(message: String, @autoclosure arg1: ()->CVarArgType?, @autoclosure arg2: ()->CVarArgType?) {
+func DLog(message: String, @autoclosure _ arg1: ()->CVarArgType?, @autoclosure _ arg2: ()->CVarArgType?) {
     if Settings.logActivityToConsole {
         NSLog(message, arg1() ?? "(nil)", arg2() ?? "(nil)")
     }
 }
 
-func DLog(message: String, @autoclosure arg1: ()->CVarArgType?, @autoclosure arg2: ()->CVarArgType?, @autoclosure arg3: ()->CVarArgType?) {
+func DLog(message: String, @autoclosure _ arg1: ()->CVarArgType?, @autoclosure _ arg2: ()->CVarArgType?, @autoclosure _ arg3: ()->CVarArgType?) {
     if Settings.logActivityToConsole {
         NSLog(message, arg1() ?? "(nil)", arg2() ?? "(nil)", arg3() ?? "(nil)")
     }
 }
 
-func DLog(message: String, @autoclosure arg1: ()->CVarArgType?, @autoclosure arg2: ()->CVarArgType?, @autoclosure arg3: ()->CVarArgType?, @autoclosure arg4: ()->CVarArgType?) {
+func DLog(message: String, @autoclosure _ arg1: ()->CVarArgType?, @autoclosure _ arg2: ()->CVarArgType?, @autoclosure _ arg3: ()->CVarArgType?, @autoclosure _ arg4: ()->CVarArgType?) {
 	if Settings.logActivityToConsole {
 		NSLog(message, arg1() ?? "(nil)", arg2() ?? "(nil)", arg3() ?? "(nil)", arg4() ?? "(nil)")
 	}
 }
 
-func DLog(message: String, @autoclosure arg1: ()->CVarArgType?, @autoclosure arg2: ()->CVarArgType?, @autoclosure arg3: ()->CVarArgType?, @autoclosure arg4: ()->CVarArgType?, @autoclosure arg5: ()->CVarArgType?) {
+func DLog(message: String, @autoclosure _ arg1: ()->CVarArgType?, @autoclosure _ arg2: ()->CVarArgType?, @autoclosure _ arg3: ()->CVarArgType?, @autoclosure _ arg4: ()->CVarArgType?, @autoclosure _ arg5: ()->CVarArgType?) {
 	if Settings.logActivityToConsole {
 		NSLog(message, arg1() ?? "(nil)", arg2() ?? "(nil)", arg3() ?? "(nil)", arg4() ?? "(nil)", arg5() ?? "(nil)")
 	}
 }
-
-////////////////////////////////////
-
-#if os(iOS)
-
-	import UIKit
-
-	typealias COLOR_CLASS = UIColor
-	typealias FONT_CLASS = UIFont
-	typealias IMAGE_CLASS = UIImage
-	let stringDrawingOptions = NSStringDrawingOptions.UsesLineFragmentOrigin
-
-	let REFRESH_STARTED_NOTIFICATION = "RefreshStartedNotification"
-	let REFRESH_ENDED_NOTIFICATION = "RefreshEndedNotification"
-	let RECEIVED_NOTIFICATION_KEY = "ReceivedNotificationKey"
-	let GLOBAL_SCREEN_SCALE = UIScreen.mainScreen().scale
-	let GLOBAL_TINT = UIColor(red: 52.0/255.0, green: 110.0/255.0, blue: 183.0/255.0, alpha: 1.0)
-
-#elseif os(OSX)
-
-	let STATUSITEM_PADDING: CGFloat = 1.0
-	let TOP_HEADER_HEIGHT: CGFloat = 28.0
-	let AVATAR_SIZE: CGFloat = 26.0
-	let LEFTPADDING: CGFloat = 44.0
-	let TITLE_HEIGHT: CGFloat = 42.0
-	let BASE_BADGE_SIZE: CGFloat = 20.0
-	let SMALL_BADGE_SIZE: CGFloat = 14.0
-	let MENU_WIDTH: CGFloat = 500.0
-	let AVATAR_PADDING: CGFloat = 8.0
-	let REMOVE_BUTTON_WIDTH: CGFloat = 80.0
-
-	let PR_ITEM_FOCUSED_STATE_KEY = "PrItemFocusedStateKey"
-
-	typealias COLOR_CLASS = NSColor
-	typealias FONT_CLASS = NSFont
-	typealias IMAGE_CLASS = NSImage
-	let stringDrawingOptions = NSStringDrawingOptions.UsesLineFragmentOrigin | NSStringDrawingOptions.UsesFontLeading
-
-#endif
 
 let itemCountFormatter = { () -> NSNumberFormatter in
     let n = NSNumberFormatter()
@@ -90,43 +93,8 @@ let syncDateFormatter = { () -> NSDateFormatter in
     return d
 }()
 
-func MAKECOLOR(red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) -> COLOR_CLASS {
-	return COLOR_CLASS(red: red, green: green, blue: blue, alpha: alpha)
-}
-
-let PULL_REQUEST_ID_KEY = "pullRequestIdKey"
-let ISSUE_ID_KEY = "issueIdKey"
-let STATUS_ID_KEY = "statusIdKey"
-let COMMENT_ID_KEY = "commentIdKey"
-let NOTIFICATION_URL_KEY = "urlKey"
-let API_USAGE_UPDATE = "RateUpdateNotification"
-
-let LOW_API_WARNING: Double = 0.20
-let NETWORK_TIMEOUT: NSTimeInterval = 120.0
-let BACKOFF_STEP: NSTimeInterval = 120.0
-
-func currentAppVersion() -> String {
-	return NSBundle.mainBundle().infoDictionary!["CFBundleShortVersionString"] as? String ?? "(unknown version)"
-}
-
 enum PullRequestCondition: Int {
 	case Open, Closed, Merged
-}
-
-enum PullRequestSection: Int {
-	case None, Mine, Participated, Merged, Closed, All
-	static let prMenuTitles = ["", "Mine", "Participated", "Recently Merged", "Recently Closed", "All Pull Requests"]
-	static let issueMenuTitles = ["", "Mine", "Participated", "Recently Merged", "Recently Closed", "All Issues"]
-    static let watchMenuTitles = ["", "Mine", "Participated", "Merged", "Closed", "Other"]
-	func prMenuName() -> String {
-		return PullRequestSection.prMenuTitles[rawValue]
-	}
-	func issuesMenuName() -> String {
-		return PullRequestSection.issueMenuTitles[rawValue]
-	}
-	func watchMenuName() -> String {
-		return PullRequestSection.watchMenuTitles[rawValue]
-	}
 }
 
 enum StatusFilter: Int {
@@ -164,12 +132,46 @@ enum PRAssignmentPolicy: Int {
 enum RepoDisplayPolicy: Int {
 	case Hide, Mine, MineAndPaticipated, All
 	static let labels = ["Hide", "Mine", "Participated", "All"]
+	static let prefixLabels = ["Hide", "Only My", "Participated", "All"]
+	static let policies = [Hide, Mine, MineAndPaticipated, All]
+	static let colors = [	COLOR_CLASS(red: 0.8, green: 0.8, blue: 0.8, alpha: 1.0),
+							COLOR_CLASS(red: 0.7, green: 0.0, blue: 0.0, alpha: 1.0),
+							COLOR_CLASS(red: 0.8, green: 0.4, blue: 0.0, alpha: 1.0),
+							COLOR_CLASS(red: 0.0, green: 0.5, blue: 0.0, alpha: 1.0)]
 	func name() -> String {
 		return RepoDisplayPolicy.labels[rawValue]
 	}
+	func prefixName() -> String {
+		return RepoDisplayPolicy.prefixLabels[rawValue]
+	}
+	func color() -> COLOR_CLASS {
+		return RepoDisplayPolicy.colors[rawValue]
+	}
+}
+
+func MAKECOLOR(red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat) -> COLOR_CLASS {
+	return COLOR_CLASS(red: red, green: green, blue: blue, alpha: alpha)
+}
+
+let PULL_REQUEST_ID_KEY = "pullRequestIdKey"
+let ISSUE_ID_KEY = "issueIdKey"
+let STATUS_ID_KEY = "statusIdKey"
+let COMMENT_ID_KEY = "commentIdKey"
+let NOTIFICATION_URL_KEY = "urlKey"
+let API_USAGE_UPDATE = "RateUpdateNotification"
+
+let LOW_API_WARNING: Double = 0.20
+let NETWORK_TIMEOUT: NSTimeInterval = 120.0
+let BACKOFF_STEP: NSTimeInterval = 120.0
+
+func currentAppVersion() -> String {
+	return NSBundle.mainBundle().infoDictionary!["CFBundleShortVersionString"] as? String ?? "(unknown version)"
 }
 
 #if os(iOS)
+
+import UIKit
+
 	enum MasterViewMode: Int {
 		case PullRequests, Issues
 		static let namesPlural = ["Pull Requests", "Issues"]
@@ -180,6 +182,15 @@ enum RepoDisplayPolicy: Int {
 		func nameSingular() -> String {
 			return MasterViewMode.namesSingular[rawValue]
 		}
+	}
+
+	func colorToHex(c: COLOR_CLASS) -> String {
+		var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+		c.getRed(&r, green: &g, blue: &b, alpha: &a)
+		r *= 255.0
+		g *= 255.0
+		b *= 255.0
+		return NSString(format: "%02X%02X%02X", Int(r), Int(g), Int(b)) as String
 	}
 
 	func imageFromColor(color: UIColor) -> UIImage {
@@ -195,19 +206,12 @@ enum RepoDisplayPolicy: Int {
 #endif
 
 func versionString() -> String {
-	var buildNumber = NSBundle.mainBundle().infoDictionary!["CFBundleVersion"] as? String ?? "unknown build"
+	let buildNumber = NSBundle.mainBundle().infoDictionary!["CFBundleVersion"] as? String ?? "unknown build"
 	return "Version \(currentAppVersion()) (\(buildNumber))"
 }
 
-func isDarkColor(color: COLOR_CLASS) -> Bool {
-	var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
-	color.getRed(&r, green: &g, blue: &b, alpha: nil)
-	let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
-	return (lum < 0.5)
-}
-
 func indexOfObject(array: [AnyObject], value: AnyObject) -> Int? {
-	for (index, element) in enumerate(array) {
+	for (index, element) in array.enumerate() {
 		if element === value {
 			return index
 		}
@@ -215,17 +219,7 @@ func indexOfObject(array: [AnyObject], value: AnyObject) -> Int? {
 	return nil
 }
 
-func atNextEvent(completion: Completion) {
-	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (Int64)(0.1 * Double(NSEC_PER_SEC))), dispatch_get_main_queue()) {
-		completion()
-	}
-}
-
-func never() -> NSDate {
-	return NSDate.distantPast() as! NSDate
-}
-
-func N(data: AnyObject?, key: String) -> AnyObject? {
+func N(data: AnyObject?, _ key: String) -> AnyObject? {
 	if let d = data as? [NSObject : AnyObject], o: AnyObject = d[key] where !(o is NSNull) {
 		return o
 	}
@@ -241,7 +235,7 @@ func md5hash(s: String) -> String {
 		CC_LONG(s.lengthOfBytesUsingEncoding(NSUTF8StringEncoding)),
 		result)
 
-	var hash = NSMutableString()
+	let hash = NSMutableString()
 	for i in 0..<digestLen {
 		hash.appendFormat("%02X", result[i])
 	}
@@ -249,6 +243,13 @@ func md5hash(s: String) -> String {
 	result.destroy()
 
 	return String(hash)
+}
+
+func isDarkColor(color: COLOR_CLASS) -> Bool {
+	var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+	color.getRed(&r, green: &g, blue: &b, alpha: nil)
+	let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+	return (lum < 0.5)
 }
 
 func parseFromHex(s: String) -> UInt32 {
@@ -259,3 +260,59 @@ func parseFromHex(s: String) -> UInt32 {
 	s.scanHexInt(&result)
 	return result
 }
+
+func colorFromUInt32(c: UInt32) -> COLOR_CLASS {
+	let red: UInt32 = (c & 0xFF0000)>>16
+	let green: UInt32 = (c & 0x00FF00)>>8
+	let blue: UInt32 = c & 0x0000FF
+	let r = CGFloat(red)/255.0
+	let g = CGFloat(green)/255.0
+	let b = CGFloat(blue)/255.0
+	return COLOR_CLASS(red: r, green: g, blue: b, alpha: 1.0)
+}
+
+//////////////////////// From tieferbegabt's post on https://forums.developer.apple.com/message/37935, with thanks!
+extension String {
+	var lastPathComponent: String {
+		get {
+			return (self as NSString).lastPathComponent
+		}
+	}
+	var pathExtension: String {
+		get {
+
+			return (self as NSString).pathExtension
+		}
+	}
+	var stringByDeletingLastPathComponent: String {
+		get {
+
+			return (self as NSString).stringByDeletingLastPathComponent
+		}
+	}
+	var stringByDeletingPathExtension: String {
+		get {
+
+			return (self as NSString).stringByDeletingPathExtension
+		}
+	}
+	var pathComponents: [String] {
+		get {
+
+			return (self as NSString).pathComponents
+		}
+	}
+	func stringByAppendingPathComponent(path: String) -> String {
+		return (self as NSString).stringByAppendingPathComponent(path)
+	}
+	func stringByAppendingPathExtension(ext: String) -> String? {
+		return (self as NSString).stringByAppendingPathExtension(ext)
+	}
+	func stringByReplacingCharactersInRange(range: NSRange, withString string: String) -> String {
+		return (self as NSString).stringByReplacingCharactersInRange(range, withString: string)
+	}
+	func toInt() -> Int {
+		return (self as NSString).integerValue
+	}
+}
+

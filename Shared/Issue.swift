@@ -54,6 +54,12 @@ final class Issue: ListableItem {
 		return i
 	}
 
+	#if os(iOS)
+	override func searchKeywords() -> [String] {
+		return ["Issue"]+super.searchKeywords()
+	}
+	#endif
+
 	class func countAllIssuesInMoc(moc: NSManagedObjectContext) -> Int {
 		let f = NSFetchRequest(entityName: "Issue")
 		f.predicate = NSPredicate(format: "sectionIndex > 0")
@@ -71,7 +77,7 @@ final class Issue: ListableItem {
 		if section != PullRequestSection.None {
 			f.predicate = NSPredicate(format: "sectionIndex == %d", section.rawValue)
 		}
-		for pr in moc.executeFetchRequest(f, error: nil) as! [Issue] {
+		for pr in try! moc.executeFetchRequest(f) as! [Issue] {
 			pr.catchUpWithComments()
 		}
 	}
@@ -112,7 +118,7 @@ final class Issue: ListableItem {
 			if let n = repo.fullName {
 				var darkSubtitle = lightSubtitle
 				darkSubtitle[NSForegroundColorAttributeName] = darkColor
-				_subtitle.appendAttributedString(NSAttributedString(string:n, attributes:darkSubtitle))
+				_subtitle.appendAttributedString(NSAttributedString(string: n, attributes: darkSubtitle))
 				_subtitle.appendAttributedString(separator)
 			}
 		}
@@ -139,7 +145,7 @@ final class Issue: ListableItem {
 		let f = NSFetchRequest(entityName: "Issue")
 		f.returnsObjectsAsFaults = false
 		f.predicate = NSPredicate(format: "condition == %d", PullRequestCondition.Closed.rawValue)
-		return moc.executeFetchRequest(f, error: nil) as! [Issue]
+		return try! moc.executeFetchRequest(f) as! [Issue]
 	}
 
 	func accessibleSubtitle() -> String {
@@ -158,6 +164,6 @@ final class Issue: ListableItem {
 			components.append("Updated \(itemDateFormatter.stringFromDate(updatedAt!))")
 		}
 
-		return ",".join(components)
+		return components.joinWithSeparator(",")
 	}
 }

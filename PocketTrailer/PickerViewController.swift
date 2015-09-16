@@ -7,10 +7,6 @@ protocol PickerViewControllerDelegate: class {
 
 final class PickerViewController: UITableViewController {
 
-	required init(coder aDecoder: NSCoder) {
-		super.init(coder: aDecoder)
-	}
-
 	var values: [String]!
 	weak var delegate: PickerViewControllerDelegate!
 	var previousValue: Int?
@@ -24,7 +20,7 @@ final class PickerViewController: UITableViewController {
 	}
 
 	override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-		let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath) as! UITableViewCell
+		let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath) 
 		cell.textLabel?.text = values[indexPath.row]
 		cell.accessoryType = indexPath.row == previousValue ? UITableViewCellAccessoryType.Checkmark : UITableViewCellAccessoryType.None
 		return cell
